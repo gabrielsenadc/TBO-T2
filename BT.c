@@ -26,6 +26,16 @@ void free_node(node_type * node){
     free(node);
 }
 
+node_type * get_righter_node(node_type * node){
+    if(node->leaf) return node;
+    return get_righter_node(node->children[node->size]);
+}
+
+node_type * get_lefter_node(node_type * node){
+    if(node->leaf) return node;
+    return get_lefter_node(node->children[0]);
+}
+
 struct BT {
     int order;     //BT order
     node_type * root;     //poiter to the root node
@@ -45,7 +55,10 @@ BT_type * create_BT(int order){
 
 void remove_key_caso1(BT_type * BT, node_type * node, int key){
     for(int i = 0; i < node->size; i++){
-        if(node->keys[i] > key) node->keys[i - 1] = node->keys[i];
+        if(node->keys[i] > key){
+            node->keys[i - 1] = node->keys[i];
+            node->values[i - 1] = node->values[i];
+        } 
     }
 
     node->size--;
@@ -55,9 +68,25 @@ void remove_key_caso2(BT_type * BT, node_type * node, int key){
     int i = 0;
     for(; i < node->size; i++) if(key == node->keys[i]) break;
 
-    if(get_size_node(node->children[i]) > BT->order/2) printf("A");
-    else if(get_size_node(node->children[i + 1]) > BT->order/2) printf("B");
-    else printf("C");
+    if(get_size_node(node->children[i]) > BT->order/2){
+        node_type * righter = get_righter_node(node->children[i]);
+        int j = get_size_node(righter) - 1;
+
+        node->keys[i] = righter->keys[j];
+        node->values[i] = righter->values[j];
+
+        remove_key(BT, node->children[i], righter->keys[j]);
+
+    } else if(get_size_node(node->children[i + 1]) > BT->order/2){
+        node_type * lefter = get_lefter_node(node->children[i]);
+        int j = 0;
+
+        node->keys[i] = lefter->keys[j];
+        node->values[i] = lefter->values[j];
+
+        remove_key(BT, node->children[i + 1], lefter->keys[j]);
+
+    } else printf("C");
 
 }
 
