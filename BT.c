@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "BT.h"
+#include "queue.h"
 
 typedef struct node node_type;
 
@@ -21,7 +22,7 @@ int node_get_size(node_type * node){
 void node_free(node_type * node){
     if(node == NULL) return;
 
-    for(int i = 0; i <= node->size; i++) node_free(node->children[i]);
+    if(node->size > 0) for(int i = 0; i <= node->size; i++) node_free(node->children[i]);
     free(node->children);
 
     free(node);
@@ -55,6 +56,14 @@ node_type * node_get_sibling(node_type * node, int right){
 }
 
 void node_concat(node_type * dest, node_type * src);
+
+void node_print(node_type * node){
+    printf("[");
+
+    for(int i = 0; i < node_get_size(node); i++) printf("key: %d, ", node->keys[i]);
+
+    printf("]");
+}
 
 
 struct BT {
@@ -210,6 +219,31 @@ void remove_key(BT_type * BT, node_type * node, int key){
 
 void BT_remove(BT_type * BT, int key){
     remove_key(BT, BT->root, key);
+}
+
+void BT_print(BT_type * BT){
+    queue_type * queue = queue_create();
+
+    enqueue(queue, BT->root);
+    int i = 1;
+
+    node_type * node;
+    while(!empty(queue)){
+        int qtt_filhos = 0;
+        for(int j = 0; j < i; j++){
+            node = dequeue(queue);
+            node_print(node);
+            if(node_get_size(node) > 0) {
+                for(int i = 0; i <= node_get_size(node); i++) enqueue(queue, node->children[i]);
+                qtt_filhos += node_get_size(node) + 1;
+            }
+            if(j != i - 1) printf(" ");
+        }
+        i = qtt_filhos;
+        printf("\n");
+    }
+
+    queue_free(queue);
 }
 
 void BT_free(BT_type * BT){

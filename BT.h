@@ -13,6 +13,8 @@ int BT_search(BT_type * BT, int key);
 
 void BT_remove(BT_type * BT, int key);
 
+void BT_print(BT_type * BT);
+
 void BT_free(BT_type * BT);
 
 #endif
