@@ -11,7 +11,6 @@ struct node {
     int * keys;     //array of keys
     int * values;     //array o values, each indexed by a key
     node_type ** children;     //array of children
-    node_type * parent;     //pointer to the node parent
 };
 
 int node_get_size(node_type * node){
@@ -38,8 +37,7 @@ node_type * node_get_lefter(node_type * node){
     return node_get_lefter(node->children[0]);
 }
 
-node_type * node_get_sibling(node_type * node, int right){
-    node_type * parent = node->parent;
+node_type * node_get_sibling(node_type * node, node_type * parent, int right){
     if(parent == NULL) return NULL;
 
     int key = node->keys[0];
@@ -56,7 +54,17 @@ node_type * node_get_sibling(node_type * node, int right){
     return parent->children[i];
 }
 
-void node_concat(node_type * dest, node_type * src);
+void node_concat(node_type * dest, node_type * src){
+    int index = dest->size;
+    for(int i = 0; i < src->size; i++){
+        dest->keys[index + i] = src->keys[i];
+        dest->values[index + i] = src->values[i];
+        dest->children[index + i] = src->children[i];
+    }
+    dest->size += src->size;
+    dest->children[dest->size] = src->children[src->size];
+
+}
 
 void node_print(node_type * node){
     printf("[");
@@ -84,50 +92,13 @@ BT_type * BT_create(int order){
     return BT;
 }
 
-void remove_key(BT_type * BT, node_type * node, int key);
+node_type * remove_key(BT_type * BT, node_type * node, int key);
 
-void remove_key_caso1(BT_type * BT, node_type * node, int key){
-    for(int i = 0; i < node->size; i++){
-        if(node->keys[i] > key){
-            node->keys[i - 1] = node->keys[i];
-            node->values[i - 1] = node->values[i];
-        } 
-    }
+node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int key){
+    if(node->size >= BT->order/2) return parent;
 
-    node->size--;
-}
-
-void remove_key_caso2(BT_type * BT, node_type * node, int key){
-    int i = 0;
-    for(; i < node->size; i++) if(key == node->keys[i]) break;
-
-    if(node_get_size(node->children[i + 1]) <= BT->order/2){
-        node_type * righter = node_get_righter(node->children[i]);
-        int j = node_get_size(righter) - 1;
-
-        node->keys[i] = righter->keys[j];
-        node->values[i] = righter->values[j];
-
-        remove_key(BT, node->children[i], righter->keys[j]);
-
-    } else {
-        node_type * lefter = node_get_lefter(node->children[i + 1]);
-        int j = 0;
-
-        node->keys[i] = lefter->keys[j];
-        node->values[i] = lefter->values[j];
-
-        remove_key(BT, node->children[i + 1], lefter->keys[j]);
-
-    }
-
-}
-
-void fix_up_caso3(BT_type * BT, node_type * node, int key){
-    node_type * left_sibling = node_get_sibling(node, 0);
-    node_type * right_sibling = node_get_sibling(node, 1);
-
-    node_type * parent = node->parent;
+    node_type * left_sibling = node_get_sibling(node, parent, 0);
+    node_type * right_sibling = node_get_sibling(node, parent, 1);
 
     if(node_get_size(left_sibling) > BT->order/2){
         int i_parent = 0;
@@ -135,9 +106,11 @@ void fix_up_caso3(BT_type * BT, node_type * node, int key){
         i_parent--;
 
         node->size++;
+        node->children[node->size] = node->children[node->size - 1];
         for(int i = node->size - 1; i > 0; i--){
             node->keys[i] = node->keys[i - 1];
             node->values[i] = node->values[i - 1];
+            node->children[i] = node->children[i - 1];
         }
 
         int i_sibling = node_get_size(left_sibling) - 1;
@@ -148,7 +121,10 @@ void fix_up_caso3(BT_type * BT, node_type * node, int key){
         parent->keys[i_parent] = left_sibling->keys[i_sibling];
         parent->values[i_parent] = left_sibling->values[i_sibling];
 
-        remove_key(BT, left_sibling, left_sibling->keys[i_sibling]);
+        node->children[0] = right_sibling->children[left_sibling->size];
+
+        left_sibling->size--;
+
 
     } else if(node_get_size(right_sibling) > BT->order/2){
         int i_parent = 0;
@@ -164,7 +140,17 @@ void fix_up_caso3(BT_type * BT, node_type * node, int key){
         parent->keys[i_parent] = right_sibling->keys[i_sibling];
         parent->values[i_parent] = right_sibling->values[i_sibling];
 
-        remove_key(BT, right_sibling, right_sibling->keys[i_sibling]);
+        node->children[node->size] = right_sibling->children[0];
+
+        for(int i = 0; i < right_sibling->size - 1; i++){
+            right_sibling->keys[i] = right_sibling->keys[i + 1];
+            right_sibling->values[i] = right_sibling->values[i + 1];
+            right_sibling->children[i] = right_sibling->children[i + 1];
+        }
+        right_sibling->children[right_sibling->size - 1] = right_sibling->children[right_sibling->size];
+
+        right_sibling->size--;
+
     } else {
         int i_parent = 0;
         for(; i_parent < parent->size; i_parent++) if(key < parent->keys[i_parent]) break;
@@ -172,27 +158,23 @@ void fix_up_caso3(BT_type * BT, node_type * node, int key){
 
         int key_parent = parent->keys[i_parent];
 
-        node->size++;
-        if(right_sibling == NULL){
-            for(int i = node->size - 1; i > 0; i--){
-                node->keys[i] = node->keys[i - 1];
-                node->values[i] = node->values[i - 1];
-            }
-        }
-
         if(right_sibling){
+            node->size++;
+            node->children[node->size] = NULL;
+
             node->keys[node->size - 1] = parent->keys[i_parent];
             node->values[node->size - 1] = parent->values[i_parent];
-            // To do
-            // node_concat(right_sibling, node);   
-            node_free(node);
+            node_concat(node, right_sibling);   
+            node_free(right_sibling);
         } else {
-            node->keys[0] = parent->keys[i_parent];
-            node->values[0] = parent->values[i_parent];
+            left_sibling->size++;
+            left_sibling->children[node->size] = NULL;
 
-            // To do
-            // node_concat(node, left_sibling);   
-            node_free(left_sibling);
+            left_sibling->keys[0] = parent->keys[i_parent];
+            left_sibling->values[0] = parent->values[i_parent];
+
+            node_concat(left_sibling, node);   
+            node_free(node);
         }
 
         for(int i = 0; i < parent->size; i++){
@@ -203,50 +185,72 @@ void fix_up_caso3(BT_type * BT, node_type * node, int key){
             } 
         }
 
-        for(int i = 0; i < parent->size; i++){
-            if(parent->keys[i] > key_parent){
-                parent->children[i] = parent->children[i + 1];
-            } 
-        }
-
         parent->size--;
 
-        if(parent->size == 0){
-            node->parent = parent->parent;
-            if(node->parent == NULL) BT->root = node;
-            return;
-        }
+        if(parent->size == 0) return parent->children[0];
     
-        if(parent->size < BT->order/2) fix_up_caso3(BT, parent, parent->keys[0]);
     }
+
+    return parent;
 }
 
-void remove_key_caso3(BT_type * BT, node_type * node, int key){
-    remove_key_caso1(BT, node, key);
-    fix_up_caso3(BT, node, key);
+void remove_key_caso1(BT_type * BT, node_type * node, int key){
+    for(int i = 0; i < node->size; i++){
+        if(node->keys[i] > key){
+            node->keys[i - 1] = node->keys[i];
+            node->values[i - 1] = node->values[i];
+        } 
+    }
+
+    node->size--;
 }
 
-void remove_key(BT_type * BT, node_type * node, int key){
+node_type * remove_key_caso2(BT_type * BT, node_type * node, int key){
+    int i = 0;
+    for(; i < node->size; i++) if(key == node->keys[i]) break;
+
+    if(node_get_size(node->children[i + 1]) <= BT->order/2){
+        node_type * righter = node_get_righter(node->children[i]);
+        int j = node_get_size(righter) - 1;
+
+        node->keys[i] = righter->keys[j];
+        node->values[i] = righter->values[j];
+
+        remove_key(BT, node->children[i], righter->keys[j]);
+        return fix_caso3(BT, node, node->children[i], key);
+
+    } else {
+        node_type * lefter = node_get_lefter(node->children[i + 1]);
+        int j = 0;
+
+        node->keys[i] = lefter->keys[j];
+        node->values[i] = lefter->values[j];
+
+        remove_key(BT, node->children[i + 1], lefter->keys[j]);
+        return fix_caso3(BT, node, node->children[i + 1], key);
+    }
+
+}
+
+node_type * remove_key(BT_type * BT, node_type * node, int key){
     int i = 0;
     for(; i < node->size; i++) if(key <= node->keys[i]) break;
 
     if(i < node->size && key == node->keys[i]){
-        if(node->leaf){
-            if(node->size > BT->order/2) remove_key_caso1(BT, node, key);
-            else remove_key_caso3(BT, node, key);
-        } else {
-            remove_key_caso2(BT, node, key);
-        }
+        if(node->leaf) remove_key_caso1(BT, node, key);
+        else node = remove_key_caso2(BT, node, key);
 
-        return;
+        return node;
     }
 
     if(node->leaf) printf("NAO EXISTE");
     else remove_key(BT, node->children[i], key);
+
+    return fix_caso3(BT, node, node->children[i], key);
 }
 
 void BT_remove(BT_type * BT, int key){
-    remove_key(BT, BT->root, key);
+    BT->root = remove_key(BT, BT->root, key);
 }
 
 void BT_print(BT_type * BT){
