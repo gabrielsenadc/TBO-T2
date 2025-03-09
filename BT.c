@@ -84,6 +84,8 @@ BT_type * BT_create(int order){
     return BT;
 }
 
+void remove_key(BT_type * BT, node_type * node, int key);
+
 void remove_key_caso1(BT_type * BT, node_type * node, int key){
     for(int i = 0; i < node->size; i++){
         if(node->keys[i] > key){
@@ -99,9 +101,9 @@ void remove_key_caso2(BT_type * BT, node_type * node, int key){
     int i = 0;
     for(; i < node->size; i++) if(key == node->keys[i]) break;
 
-    if(get_size_node(node->children[i + 1]) <= BT->order/2){
+    if(node_get_size(node->children[i + 1]) <= BT->order/2){
         node_type * righter = node_get_righter(node->children[i]);
-        int j = get_size_node(righter) - 1;
+        int j = node_get_size(righter) - 1;
 
         node->keys[i] = righter->keys[j];
         node->values[i] = righter->values[j];
@@ -181,14 +183,15 @@ void fix_up_caso3(BT_type * BT, node_type * node, int key){
         if(right_sibling){
             node->keys[node->size - 1] = parent->keys[i_parent];
             node->values[node->size - 1] = parent->values[i_parent];
-
-            node_concat(right_sibling, node);   
+            // To do
+            // node_concat(right_sibling, node);   
             node_free(node);
         } else {
             node->keys[0] = parent->keys[i_parent];
             node->values[0] = parent->values[i_parent];
 
-            node_concat(node, left_sibling);   
+            // To do
+            // node_concat(node, left_sibling);   
             node_free(left_sibling);
         }
 
@@ -239,7 +242,7 @@ void remove_key(BT_type * BT, node_type * node, int key){
     }
 
     if(node->leaf) printf("NAO EXISTE");
-    else remove_node(BT, node->children[i], key);
+    else remove_key(BT, node->children[i], key);
 }
 
 void BT_remove(BT_type * BT, int key){
