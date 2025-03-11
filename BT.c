@@ -31,10 +31,10 @@ int node_get_size(node_type * node){
     return node->size;
 }
 
-void node_free(node_type * node){
-    if(node == NULL) return;
+void node_free(node_type * node) {
+    if (node == NULL) return;
 
-    if(node->size > 0) for(int i = 0; i <= node->size + 1; i++) node_free(node->children[i]);
+    if (!node->leaf) for (int i = 0; i <= node->size; i++) node_free(node->children[i]);
     free(node->children);
     free(node->keys);
     free(node->values);
@@ -82,6 +82,7 @@ void node_concat(node_type * dest, node_type * src){
 }
 
 void node_print(node_type * node){
+    if(node == NULL) return;
     printf("[");
 
     for(int i = 0; i < node_get_size(node); i++) printf("key: %d, ", node->keys[i]);
@@ -109,37 +110,40 @@ BT_type * BT_create(int order){
 
 
 static void BT_split(node_type* parent, int index, node_type* node, int order) {
-    // Cria o nó irmão ao nó cheio para fazer o split
-    node_type* sibling = node_create(order, node->leaf);
-    int s_size = sibling->size = (node->size + 1) / 2;
+    int max_keys = order - 1;
+    int s_size = (max_keys) / 2;
 
-    // Transfere metade das chaves, valores e filhos para o novo nó irmão
-    for (int i = 0; i < node->size - s_size; i++) {
-        sibling->keys[i] = node->keys[i + s_size];
-        sibling->values[i] = node->values[i + s_size];
+    node_type* sibling = node_create(order, node->leaf);
+    sibling->size = max_keys - s_size - 1;
+
+    // Transfere chaves após a mediana para o irmão
+    for (int i = 0; i < sibling->size; i++) {
+        sibling->keys[i] = node->keys[i + s_size + 1];
+        sibling->values[i] = node->values[i + s_size + 1];
     }
+
     if (!node->leaf) {
-        for (int j = 0; j < s_size; j++) {
-            sibling->children[j] = node->children[j + s_size];
+        for (int j = 0; j <= sibling->size; j++) {
+            sibling->children[j] = node->children[j + s_size + 1];
         }
     }
 
-    // Desloca as chaves e valores do pai para inserir a mediana e sibling
-    for (int i = parent->size - 1; i >= index; i--) {
-        parent->keys[i + 1] = parent->keys[i];
-        parent->values[i + 1] = parent->values[i];
+    // Insere a mediana no pai
+    for (int i = parent->size; i > index; i--) {
+        parent->keys[i] = parent->keys[i - 1];
+        parent->values[i] = parent->values[i - 1];
     }
-    parent->keys[index] = node->keys[s_size - 1];
-    parent->values[index] = node->values[s_size - 1];
+    parent->keys[index] = node->keys[s_size];
+    parent->values[index] = node->values[s_size];
 
-    // Desloca os filhos do pai
-    for (int j = parent->size; j >= index + 1; j--) {
-        parent->children[j + 1] = parent->children[j];
+    // Ajusta os filhos do pai
+    for (int j = parent->size + 1; j > index + 1; j--) {
+        parent->children[j] = parent->children[j - 1];
     }
     parent->children[index + 1] = sibling;
 
     // Ajusta o tamanho do nó original e do pai
-    node->size = s_size - 1;
+    node->size = s_size;
     parent->size++;
 }
 
@@ -170,7 +174,7 @@ static void BT_insert_nonfull(node_type* node, int order, int key, int value) {
         index++;
 
         // Split caso filho esteja cheio
-        if (node->children[index] && node->children[index]->size == order) {
+        if (node->children[index] && node->children[index]->size == order - 1) {
             BT_split(node, index, node->children[index], order);
 
             // Se a nova chave for maior que a chave promovida, vamos para o próximo filho
@@ -191,7 +195,7 @@ void BT_insert(BT_type * BT, int key, int value) {
 
     node_type* root = BT->root;
 
-    if (root->size == BT->order) {
+    if (root->size == BT->order - 1) {
         // Cria novo nó que será a nova raiz
         node_type* new_root = node_create(BT->order, 0);
         BT->root = new_root;
@@ -381,6 +385,7 @@ void BT_remove(BT_type * BT, int key){
 void BT_print(BT_type * BT){
     queue_type * queue = queue_create();
 
+    printf("--- ARVORE B\n");
     enqueue(queue, BT->root);
     int i = 1;
 
