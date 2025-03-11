@@ -2,8 +2,6 @@
 #include "BT.h"
 #include "queue.h"
 
-typedef struct node node_type;
-
 struct node {
     int size;     //amount of keys in this node
     int leaf;     //flag if node is a leaf  
@@ -13,6 +11,21 @@ struct node {
     node_type ** children;     //array of children
 };
 
+node_type* node_create(int order, int is_leaf) {
+    node_type* node = calloc(1, sizeof(node_type));
+
+    if (node == NULL) printf("Erro ao criar um nó vazio\n");
+
+    node->leaf = is_leaf;  // Aqui definimos a flag leaf explicitamente
+
+    node->keys = calloc(order - 1, sizeof(int));
+    node->values = calloc(order - 1, sizeof(int));
+    node->children = calloc(order, sizeof(node_type* ));
+
+    return node;
+}
+
+
 int node_get_size(node_type * node){
     if(node == NULL) return 0;
     return node->size;
@@ -21,8 +34,10 @@ int node_get_size(node_type * node){
 void node_free(node_type * node){
     if(node == NULL) return;
 
-    if(node->size > 0) for(int i = 0; i <= node->size; i++) node_free(node->children[i]);
+    if(node->size > 0) for(int i = 0; i <= node->size + 1; i++) node_free(node->children[i]);
     free(node->children);
+    free(node->keys);
+    free(node->values);
 
     free(node);
 }
@@ -91,6 +106,116 @@ BT_type * BT_create(int order){
 
     return BT;
 }
+
+
+static void BT_split(node_type* parent, int index, node_type* node, int order) {
+    // Cria o nó irmão ao nó cheio para fazer o split
+    node_type* sibling = node_create(order, node->leaf);
+    int s_size = sibling->size = (node->size + 1) / 2;
+
+    // Transfere metade das chaves, valores e filhos para o novo nó irmão
+    for (int i = 0; i < node->size - s_size; i++) {
+        sibling->keys[i] = node->keys[i + s_size];
+        sibling->values[i] = node->values[i + s_size];
+    }
+    if (!node->leaf) {
+        for (int j = 0; j < s_size; j++) {
+            sibling->children[j] = node->children[j + s_size];
+        }
+    }
+
+    // Desloca as chaves e valores do pai para inserir a mediana e sibling
+    for (int i = parent->size - 1; i >= index; i--) {
+        parent->keys[i + 1] = parent->keys[i];
+        parent->values[i + 1] = parent->values[i];
+    }
+    parent->keys[index] = node->keys[s_size - 1];
+    parent->values[index] = node->values[s_size - 1];
+
+    // Desloca os filhos do pai
+    for (int j = parent->size; j >= index + 1; j--) {
+        parent->children[j + 1] = parent->children[j];
+    }
+    parent->children[index + 1] = sibling;
+
+    // Ajusta o tamanho do nó original e do pai
+    node->size = s_size - 1;
+    parent->size++;
+}
+
+
+static void BT_insert_nonfull(node_type* node, int order, int key, int value) {
+    int index = node->size - 1;
+
+    // CASO 1: Nó é folha
+    if (node->leaf) {
+        // Desloca chaves e valores maiores para a direita
+        while (index >= 0 && key < node->keys[index]) {
+            node->keys[index + 1] = node->keys[index];
+            node->values[index + 1] = node->values[index];
+            index--;
+        }
+        // Insere a nova chave e valor
+        node->keys[index + 1] = key;
+        node->values[index + 1] = value;
+        node->size++;
+    }
+
+    // CASO 2: Nó é interno
+    else {
+        // Encontra a posição do filho para descer
+        while (index >= 0 && key < node->keys[index]) {
+            index--;
+        }
+        index++;
+
+        // Split caso filho esteja cheio
+        if (node->children[index] && node->children[index]->size == order) {
+            BT_split(node, index, node->children[index], order);
+
+            // Se a nova chave for maior que a chave promovida, vamos para o próximo filho
+            if (key > node->keys[index]) {
+                index++;
+            }
+        }
+        // Desce recursivamente
+        BT_insert_nonfull(node->children[index], order, key, value);
+    }
+}
+
+
+void BT_insert(BT_type * BT, int key, int value) {
+    if (BT == NULL) return;   // Árvore inválida para inserção
+
+    if (BT->root == NULL) BT->root = node_create(BT->order, 1);
+
+    node_type* root = BT->root;
+
+    if (root->size == BT->order) {
+        // Cria novo nó que será a nova raiz
+        node_type* new_root = node_create(BT->order, 0);
+        BT->root = new_root;
+        // O antigo root vira filho[0] da nova raiz
+        new_root->children[0] = root;
+        BT_split(new_root, 0, root, BT->order);
+        BT_insert_nonfull(new_root, BT->order, key, value);
+    }
+    else BT_insert_nonfull(root, BT->order, key, value);
+    BT->size++;
+}
+
+
+int BT_search(node_type * root, int key) {
+    if(root == NULL) return 0;   //Nó invalido para busca
+
+    int index = 0, node_size = node_get_size(root);
+    while(index < node_size && key > root->keys[index]) index++;
+
+    if(index < node_size && key == root->keys[index]) return 1;
+    else if(root->leaf) return 0;  //Não encontrou a chave
+    else return BT_search(root->children[index], key);    //Continua a busca nos outros nós
+}
+
 
 node_type * remove_key(BT_type * BT, node_type * node, int key);
 
@@ -281,4 +406,8 @@ void BT_print(BT_type * BT){
 void BT_free(BT_type * BT){
     node_free(BT->root);
     free(BT);
+}
+
+node_type * BT_get_root(BT_type * BT) {
+    if(BT != NULL) return BT->root;
 }

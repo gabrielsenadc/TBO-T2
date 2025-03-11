@@ -34,7 +34,7 @@ int main(int argc, char ** argv) {
 
         case 'I':
             fscanf(file, "%d, %d\n", &key, &value);
-            //BT_insert(bt, key, value);
+            BT_insert(bt, key, value);
             break;
         
         case 'R':
@@ -44,7 +44,8 @@ int main(int argc, char ** argv) {
 
         case 'B':
             fscanf(file, "%d\n", &key);
-            //BT_search(bt, key);
+            if(BT_search(BT_get_root(bt), key)) printf("O REGISTRO ESTA NA ARVORE!\n");
+            else printf("O REGISTRO NAO ESTA NA ARVORE!\n");
             break;
 
         default:
@@ -54,6 +55,7 @@ int main(int argc, char ** argv) {
         }
     }
 
+    BT_print(bt);
     BT_free(bt);
     fclose(file);
 
