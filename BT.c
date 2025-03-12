@@ -58,7 +58,7 @@ node_type * node_get_sibling(node_type * node, node_type * parent, int right){
     int key = node->keys[0];
 
     int i = 0;
-    for(; i < parent->size; i++) if(key < parent->keys[i]) break;
+    for(; i < parent->size; i++) if(key <= parent->keys[i]) break;
 
     if(right) i++;
     else i--;
@@ -348,8 +348,6 @@ node_type * remove_key_caso2(BT_type * BT, node_type * node, int key){
         node_type * righter = node_get_righter(node->children[i]);
         int j = node_get_size(righter) - 1;
 
-        int new_key = righter->keys[j];
-
         node->keys[i] = righter->keys[j];
         node->values[i] = righter->values[j];
 
@@ -359,8 +357,6 @@ node_type * remove_key_caso2(BT_type * BT, node_type * node, int key){
     } else {
         node_type * lefter = node_get_lefter(node->children[i + 1]);
         int j = 0;
-
-        int new_key = lefter->keys[j];
 
         node->keys[i] = lefter->keys[j];
         node->values[i] = lefter->values[j];
