@@ -39,7 +39,7 @@ int main(int argc, char ** argv) {
         
         case 'R':
             fscanf(file, "%d\n", &key);
-            //BT_remove(bt, key);
+            BT_remove(bt, key);
             break;
 
         case 'B':
