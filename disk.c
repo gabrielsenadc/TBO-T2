@@ -14,11 +14,11 @@ static int get_max(disk * d) {
     
     int max = 0;
 
-    for(int i = 0; i <= d -> order; i++) {
+    for(int i = 0; i <= d -> items_max_levels; i++) {
         max += pow(d -> order, i);
     }
 
-    return max;;
+    return max;
 }
 
 static int get_quantity(disk * d) {
