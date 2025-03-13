@@ -18,8 +18,8 @@ node_type* node_create(int order, int is_leaf) {
 
     node->leaf = is_leaf;  // Aqui definimos a flag leaf explicitamente
 
-    node->keys = calloc(order - 1, sizeof(int));
-    node->values = calloc(order - 1, sizeof(int));
+    node->keys = calloc(order, sizeof(int));
+    node->values = calloc(order, sizeof(int));
     node->children = calloc(order, sizeof(node_type* ));
 
     return node;
@@ -118,7 +118,7 @@ static void BT_split(node_type* parent, int index, node_type* node, int order) {
     int s_size = (max_keys) / 2;
 
     node_type* sibling = node_create(order, node->leaf);
-    sibling->size = max_keys - s_size - 1;
+    sibling->size = max_keys - s_size;
 
     // Transfere chaves após a mediana para o irmão
     for (int i = 0; i < sibling->size; i++) {
@@ -149,6 +149,36 @@ static void BT_split(node_type* parent, int index, node_type* node, int order) {
     // Ajusta o tamanho do nó original e do pai
     node->size = s_size;
     parent->size++;
+}
+
+
+static void BT_insert_nonfull_2(node_type* node, int order, int key, int value) {
+    int index = node->size - 1;
+
+    // CASO 1: Nó é folha
+    if (node->leaf) {
+        // Desloca chaves e valores maiores para a direita
+        while (index >= 0 && key < node->keys[index]) {
+            node->keys[index + 1] = node->keys[index];
+            node->values[index + 1] = node->values[index];
+            index--;
+        }
+        // Insere a nova chave e valor
+        node->keys[index + 1] = key;
+        node->values[index + 1] = value;
+        node->size++;
+    }
+    // CASO 2: Nó é interno
+    else {
+        // Encontra a posição do filho para descer
+        while (index >= 0 && key < node->keys[index]) {
+            index--;
+        }
+        index++;
+
+        BT_insert_nonfull_2(node->children[index], order, key, value);
+        if(node->children[index]->size == order) BT_split(node, index, node->children[index], order);
+    }
 }
 
 
@@ -199,16 +229,16 @@ void BT_insert(BT_type * BT, int key, int value) {
 
     node_type* root = BT->root;
 
-    if (root->size == BT->order - 1) {
+    if (root->size == BT->order - 1 && root->leaf) {
         // Cria novo nó que será a nova raiz
         node_type* new_root = node_create(BT->order, 0);
         BT->root = new_root;
         // O antigo root vira filho[0] da nova raiz
         new_root->children[0] = root;
+        BT_insert_nonfull_2(root, BT->order, key, value);
         BT_split(new_root, 0, root, BT->order);
-        BT_insert_nonfull(new_root, BT->order, key, value);
     }
-    else BT_insert_nonfull(root, BT->order, key, value);
+    else BT_insert_nonfull_2(root, BT->order, key, value);
     BT->size++;
 }
 
