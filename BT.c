@@ -20,7 +20,7 @@ node_type* node_create(int order, int is_leaf) {
 
     node->keys = calloc(order, sizeof(int));
     node->values = calloc(order, sizeof(int));
-    node->children = calloc(order, sizeof(node_type* ));
+    node->children = calloc(order + 1, sizeof(node_type* ));
 
     return node;
 }
@@ -114,40 +114,39 @@ BT_type * BT_create(int order){
 
 
 static void BT_split(node_type* parent, int index, node_type* node, int order) {
-    int max_keys = order - 1;
-    int s_size = (max_keys) / 2;
+    int mediana_index = (order - 1) / 2;
 
     node_type* sibling = node_create(order, node->leaf);
-    sibling->size = max_keys - s_size;
+    sibling->size = node->size - mediana_index - 1;
+    node->size = mediana_index;
 
     // Transfere chaves após a mediana para o irmão
     for (int i = 0; i < sibling->size; i++) {
-        sibling->keys[i] = node->keys[i + s_size + 1];
-        sibling->values[i] = node->values[i + s_size + 1];
+        sibling->keys[i] = node->keys[i + mediana_index + 1];
+        sibling->values[i] = node->values[i + mediana_index + 1];
     }
 
     if (!node->leaf) {
         for (int j = 0; j <= sibling->size; j++) {
-            sibling->children[j] = node->children[j + s_size + 1];
+            sibling->children[j] = node->children[j + mediana_index + 1];
         }
     }
 
     // Insere a mediana no pai
-    for (int i = parent->size; i > index; i--) {
-        parent->keys[i] = parent->keys[i - 1];
-        parent->values[i] = parent->values[i - 1];
+    for (int i = parent->size - 1; i >= index; i--) {
+        parent->keys[i + 1] = parent->keys[i];
+        parent->values[i + 1] = parent->values[i];
     }
-    parent->keys[index] = node->keys[s_size];
-    parent->values[index] = node->values[s_size];
-
-    // Ajusta os filhos do pai
-    for (int j = parent->size + 1; j > index + 1; j--) {
-        parent->children[j] = parent->children[j - 1];
+    // Desloca filhos apenas a partir de index + 1
+    for (int j = parent->size; j >= index + 1; j--) {
+        parent->children[j + 1] = parent->children[j];
     }
-    parent->children[index + 1] = sibling;
+    parent->keys[index] = node->keys[mediana_index];
+    parent->values[index] = node->values[mediana_index];
+    parent->children[index] = node;
+    parent->children[index+1] = sibling;
 
     // Ajusta o tamanho do nó original e do pai
-    node->size = s_size;
     parent->size++;
 }
 
@@ -198,7 +197,6 @@ static void BT_insert_nonfull(node_type* node, int order, int key, int value) {
         node->values[index + 1] = value;
         node->size++;
     }
-
     // CASO 2: Nó é interno
     else {
         // Encontra a posição do filho para descer
@@ -229,17 +227,15 @@ void BT_insert(BT_type * BT, int key, int value) {
 
     node_type* root = BT->root;
 
-    if (root->size == BT->order - 1 && root->leaf) {
+    BT_insert_nonfull_2(root, BT->order, key, value);
+    if (root->size == BT->order) {
         // Cria novo nó que será a nova raiz
         node_type* new_root = node_create(BT->order, 0);
         BT->root = new_root;
         // O antigo root vira filho[0] da nova raiz
         new_root->children[0] = root;
-        BT_insert_nonfull_2(root, BT->order, key, value);
         BT_split(new_root, 0, root, BT->order);
     }
-    else BT_insert_nonfull_2(root, BT->order, key, value);
-    BT->size++;
 }
 
 
