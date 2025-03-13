@@ -1,7 +1,7 @@
 #MAKEFILE By: Afonso Salvador de Magalhaes
 #With support of Kevin Carvalho de Jesus and João Paulo Moura
 
-NAME_PROGRAM = trab2
+NAME_PROGRAM = trab2.out
 CC = gcc
 FLAGS = -lm -pedantic -Wall 
 C_FILES = $(wildcard *.c)
@@ -48,7 +48,7 @@ valgrind:
 	@ echo $(RESET)
 	@ valgrind ./$(NAME_PROGRAM) $(f)
 
-clean: 
+clear: 
 	@ echo $(WHITE)
 	@ echo "Limpando arquivos temporarios ..."
 	@ echo $(RESET)
