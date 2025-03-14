@@ -49,6 +49,7 @@ int main(int argc, char ** argv) {
             break;
 
         default:
+            i--;
             fscanf(file, "%255[^\n]\n", buffer);
             printf("A operação %s%c%s não pôde ser executada e foi ignorada.\n", CYAN, op, RESET);
             break;
