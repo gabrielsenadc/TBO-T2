@@ -112,6 +112,12 @@ BT_type * BT_create(int order){
     return BT;
 }
 
+int BT_get_min(BT_type * BT){
+    int order = BT->order;
+    if(BT->order % 2 != 0) order++;
+    return (order / 2) - 1;
+}
+
 
 static void BT_split(node_type* parent, int index, node_type* node, int order) {
     int mediana_index = (order - 1) / 2;
@@ -254,12 +260,12 @@ int BT_search(node_type * root, int key) {
 node_type * remove_key(BT_type * BT, node_type * node, int key);
 
 node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent){
-    if(node->size >= BT->order/2) return parent;
+    if(node->size >= BT_get_min(BT)) return parent;
 
     node_type * left_sibling = node_get_sibling(node, parent, 0);
     node_type * right_sibling = node_get_sibling(node, parent, 1);
 
-    if(node_get_size(left_sibling) > BT->order/2){
+    if(node_get_size(left_sibling) > BT_get_min(BT)){
         i_parent--;
 
         node->size++;
@@ -283,7 +289,7 @@ node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_
         left_sibling->size--;
 
 
-    } else if(node_get_size(right_sibling) > BT->order/2){
+    } else if(node_get_size(right_sibling) > BT_get_min(BT)){
 
         node->size++;
 
@@ -364,7 +370,7 @@ node_type * remove_key_caso2(BT_type * BT, node_type * node, int key){
     int i = 0;
     for(; i < node->size; i++) if(key == node->keys[i]) break;
 
-    if(node_get_size(node->children[i + 1]) <= BT->order/2){
+    if(node_get_size(node->children[i + 1]) <= BT_get_min(BT)){
         node_type * righter = node_get_righter(node->children[i]);
         int j = node_get_size(righter) - 1;
 
@@ -382,7 +388,7 @@ node_type * remove_key_caso2(BT_type * BT, node_type * node, int key){
         node->values[i] = lefter->values[j];
 
         node->children[i + 1] = remove_key(BT, node->children[i + 1], lefter->keys[j]);
-        return fix_caso3(BT, node, node->children[i + 1], i);
+        return fix_caso3(BT, node, node->children[i + 1], i + 1);
     }
 
 }
