@@ -1,70 +1,51 @@
 #include <math.h>
+#include <stdlib.h>
 #include "disk.h"
+
+#define DEBUG 0
 
 struct disk {
     FILE * file;
-    int order;
-    int item_size;
-    // As variáveis abaixo são realmente úteis?
-    int items_max_levels;
-    int items_quantity;
+    long int bp;    // Binary pointer
+    int data_size;
+    int data_quantity;
+    void * (*data_reader)(FILE *);
 };
 
-static int get_max(disk * d) {
-    
-    int max = 0;
-
-    for(int i = 0; i <= d -> items_max_levels; i++) {
-        max += pow(d -> order, i);
-    }
-
-    return max;
-}
-
-static int get_quantity(disk * d) {
-    return d -> items_quantity;
-}
-
-disk * disk_create(char * name, int order, int item_size) {
+disk * disk_create(char * name, int order, int data_size) {
 
     disk * d = (disk *) calloc(1, sizeof(disk));
     d -> file = fopen(name, "wb+");
-    d -> order = order;
-    d -> items_max_levels = 0;
-    d -> items_quantity = 0;
-    d -> item_size = item_size;
+    d -> data_size = data_size;
+    d -> data_quantity = 0;
+    d -> bp = 0;
 
 return d;
 }
 
-int disk_is_full(disk * d) {
-    return get_quantity(d) >= get_max(d);  
+long int disk_write(disk * d, void * data) {
+
+    fseek(d -> file, d -> bp, 0);
+
+    fwrite(data, d -> data_size, 1, d -> file);
+    d -> data_quantity++;
+    long int bp = d -> bp;
+    d -> bp += d -> data_size;
+
+return bp;
 }
 
-int disk_get_levels(disk * d) {
-    return d -> items_max_levels;
-}
+void * disk_read(disk * d, long int bp) {
 
-void disk_write(disk * d, void * data, long offset) {
-
-    fseek(d -> file, offset, 0);
-
-    if(disk_is_full(d)) {
-        d -> items_max_levels++;
-    }
-
-    fwrite(data, d -> item_size, 1, d -> file);
-    d -> items_quantity;
-
-}
-
-void * disk_read(disk * d, long offset) {
-
-    fseek(d -> file, offset, 0);
-    void * data = (void *) calloc(1, d -> item_size);
-    fread(data, d -> item_size, 1, d -> file);
+    fseek(d -> file, bp, 0);
+    void * data = (void *) calloc(1, d -> data_size);
+    fread(data, d -> data_size, 1, d -> file);
 
 return data;
+}
+
+int disk_get_quantity(disk * d) {
+    return d -> data_quantity;
 }
 
 void disk_free(disk * d) {

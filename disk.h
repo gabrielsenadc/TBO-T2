@@ -5,15 +5,15 @@
 
 typedef struct disk disk;
 
-disk * disk_create(char * path, int order, int item_size);
+disk * disk_create(char * path, int order, int data_size);
 
-int disk_is_full(disk * d);
+long int disk_write(disk * d, void * data);
 
-int disk_get_levels(disk * d);
+void * disk_read(disk * d, long int bp);
 
-void disk_write(disk * d, void * data, long offset);
+// void disk_remove?
 
-void * disk_read(disk * d, long offset);
+int disk_get_quantity(disk * d);
 
 void disk_free(disk * d);
 

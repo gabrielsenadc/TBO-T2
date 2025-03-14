@@ -9,7 +9,7 @@
                 "-g",
                 "*.c",
                 "-o",
-                "TBO-T2"
+                "TBO-T2.out"
             ],
             "options": {
                 "cwd": "${fileDirname}"
