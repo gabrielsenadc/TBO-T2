@@ -52,13 +52,8 @@ node_type * node_get_lefter(node_type * node){
     return node_get_lefter(node->children[0]);
 }
 
-node_type * node_get_sibling(node_type * node, node_type * parent, int right){
+node_type * node_get_sibling(int i, node_type * parent, int right){
     if(parent == NULL) return NULL;
-
-    int key = node->keys[0];
-
-    int i = 0;
-    for(; i < parent->size; i++) if(key <= parent->keys[i]) break;
 
     if(right) i++;
     else i--;
@@ -262,8 +257,8 @@ node_type * remove_key(BT_type * BT, node_type * node, int key);
 node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent){
     if(node->size >= BT_get_min(BT)) return parent;
 
-    node_type * left_sibling = node_get_sibling(node, parent, 0);
-    node_type * right_sibling = node_get_sibling(node, parent, 1);
+    node_type * left_sibling = node_get_sibling(i_parent, parent, 0);
+    node_type * right_sibling = node_get_sibling(i_parent, parent, 1);
 
     if(node_get_size(left_sibling) > BT_get_min(BT)){
         i_parent--;
@@ -275,7 +270,7 @@ node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_
             node->values[i] = node->values[i - 1];
             node->children[i] = node->children[i - 1];
         }
-
+        
         int i_sibling = node_get_size(left_sibling) - 1;
         
         node->keys[0] = parent->keys[i_parent];
@@ -283,8 +278,8 @@ node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_
 
         parent->keys[i_parent] = left_sibling->keys[i_sibling];
         parent->values[i_parent] = left_sibling->values[i_sibling];
-
-        node->children[0] = right_sibling->children[left_sibling->size];
+        
+        node->children[0] = left_sibling->children[left_sibling->size];
 
         left_sibling->size--;
 
@@ -346,8 +341,12 @@ node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_
 
         parent->size--;
 
-        if(parent->size == 0) return parent->children[0];
-    
+        if(parent->size == 0 && BT->root == parent) {
+            node_type * child = parent->children[0];
+            for(int i = 0; i < BT->order; i++) parent->children[i] = NULL;
+            node_free(parent);
+            return child;
+        }
     }
 
     return parent;
