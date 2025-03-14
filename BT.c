@@ -322,7 +322,7 @@ node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_
             node_free(right_sibling);
         } else {
             left_sibling->size++;
-            left_sibling->children[node->size] = NULL;
+            left_sibling->children[left_sibling->size] = NULL;
 
             left_sibling->keys[left_sibling->size - 1] = parent->keys[i_parent];
             left_sibling->values[left_sibling->size - 1] = parent->values[i_parent];
