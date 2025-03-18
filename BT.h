@@ -6,6 +6,20 @@
 typedef struct node node_type;
 typedef struct BT BT_type;
 
+node_type * node_read(long bp, int size, int leaf, int children_quantity, int * keys, int * values, long * cbp);
+
+int node_get_size(node_type * node);
+
+int node_get_leaf(node_type * node);
+
+long int node_get_bp(node_type * node);
+
+int * node_get_keys(node_type * node);
+
+int * node_get_values(node_type * node);
+
+int node_get_children_quantity(node_type * node);
+
 BT_type * BT_create(int order);
 
 void BT_insert(BT_type * BT, int key, int value);

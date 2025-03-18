@@ -3,9 +3,10 @@
 #include "queue.h"
 
 struct node {
+    long pos_binary_file;     //node position in the binary file   
     int size;     //amount of keys in this node
     int leaf;     //flag if node is a leaf  
-    int pos_binary_file;     //node position in the binary file   
+    int children_quantity;  //amount of children
     int * keys;     //array of keys
     int * values;     //array o values, each indexed by a key
     node_type ** children;     //array of children
@@ -25,10 +26,46 @@ node_type* node_create(int order, int is_leaf) {
     return node;
 }
 
+node_type * node_read(long bp, int size, int leaf, int children_quantity, int * keys, int * values, long * cbp) {
+
+    node_type * node = (node_type *) calloc(1, sizeof(node_type));
+    node->keys = calloc(size, sizeof(int));
+    node->values = calloc(size, sizeof(int));
+
+    node -> pos_binary_file = bp;
+    node -> size = size;
+    node -> leaf = leaf;
+    node -> children_quantity = children_quantity;
+    for(int i = 0; i < size; i++) node -> keys[i] = keys[i];
+    for(int i = 0; i < size; i++) node -> values[i] = values[i];
+    // Missing children bps
+
+return node; 
+}
 
 int node_get_size(node_type * node){
     if(node == NULL) return 0;
     return node->size;
+}
+
+int node_get_leaf(node_type * node) {
+    return node -> leaf;
+}
+
+long int node_get_bp(node_type * node) {
+    return node -> pos_binary_file;
+}
+
+int * node_get_keys(node_type * node) {
+    return node -> keys;
+}
+
+int * node_get_values(node_type * node) {
+    return node -> values;
+}
+
+int node_get_children_quantity(node_type * node) {
+    return node -> children_quantity;
 }
 
 void node_free(node_type * node) {
@@ -88,7 +125,6 @@ void node_print(node_type * node){
 
     printf("]");
 }
-
 
 struct BT {
     int order;     //BT order
