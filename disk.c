@@ -3,6 +3,7 @@
 #include "disk.h"
 
 #define DEBUG 0
+#define UNDEFINED -1
 
 struct disk {
     FILE * file;
@@ -17,23 +18,32 @@ disk * disk_create(char * name, int order) {
     d -> file = fopen(name, "wb+");
     d -> bp = 0;
     d -> order = order;
-    d -> node_size = sizeof(long) + 2 * sizeof(int) + 2 * (order - 1) * sizeof(int) + order * sizeof(long);
+    d -> node_size = sizeof(long) + 3 * sizeof(int) + 2 * (order - 1) * sizeof(int) + order * sizeof(long);
 
 return d;
 }
 
-long disk_write(disk * d, node_type * node) {
+long disk_write(disk * d, node_type * node, int new) {
 
-    int nan = -1;
+    int nan = UNDEFINED;
+    long lnan = UNDEFINED;
+    long bp = node_get_bp(node);
     int size = node_get_size(node);
     int leaf = node_get_leaf(node);
     int children_quantity = node_get_children_quantity(node);
     int * keys = node_get_keys(node);
     int * values = node_get_values(node);
-    long * cbps; // missing
+    long * cbps = node_get_children(node);
 
-    fseek(d -> file, d -> bp, 0);
-    fwrite(&d -> bp, sizeof(long), 1, d -> file);
+    if(new) {
+        fseek(d -> file, d -> bp, 0);
+        fwrite(&d -> bp, sizeof(long), 1, d -> file);
+    }
+    else {
+        fseek(d -> file, bp, 0);
+        fwrite(&bp, sizeof(long), 1, d -> file);
+    }
+    
     fwrite(&size, sizeof(int), 1, d -> file);
     fwrite(&leaf, sizeof(int), 1, d -> file);
     fwrite(&children_quantity, sizeof(int), 1, d -> file);
@@ -47,18 +57,18 @@ long disk_write(disk * d, node_type * node) {
         else fwrite(&nan, sizeof(int), 1, d -> file);
     }
     for(int i = 0; i < d -> order; i++) {
-        //fwrite(&values[i], sizeof(int), 1, d -> file);    MISSING 
+        if(i < children_quantity) fwrite(&cbps[i], sizeof(long), 1, d -> file);
+        else fwrite(&lnan, sizeof(long), 1, d -> file);
     }
 
-    long int bp = d -> bp;
+    if(!new) return bp;
+    long old_bp = d -> bp;
     d -> bp += d -> node_size;
 
-return bp;
+return old_bp;
 }
 
-void disk_change();
-
-node_type * disk_read(disk * d, long int bp) {
+node_type * disk_read(disk * d, long bp) {
 
     long bp;
     int size, leaf, children_quantity, keys[d -> order], values[d -> order], cbps[d -> order];
@@ -71,11 +81,9 @@ node_type * disk_read(disk * d, long int bp) {
 
     for(int i = 0; i < d -> order; i++) fread(&keys[i], sizeof(int), 1, d -> file);
     for(int i = 0; i < d -> order; i++) fread(&values[i], sizeof(int), 1, d -> file);
-    // for(int i = 0; i < d -> order; i++) MISSING BPS
+    for(int i = 0; i < d -> order; i++) fread(&cbps[i], sizeof(long), 1, d -> file);
 
-    node_type * node = node_read(bp, size, leaf, children_quantity, keys, values, cbps);
-
-return node;
+    return node_read(bp, size, leaf, children_quantity, keys, values, cbps);
 }
 
 void disk_free(disk * d) {
