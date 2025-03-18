@@ -188,13 +188,17 @@ static void BT_split(node_type* parent, int index, node_type* node, int order) {
 }
 
 
-static void BT_insert_nonfull_2(node_type* node, int order, int key, int value) {
+static void BT_insert_nonfull(node_type* node, int order, int key, int value) {
     int index = node->size - 1;
 
     // CASO 1: Nó é folha
     if (node->leaf) {
         // Desloca chaves e valores maiores para a direita
-        while (index >= 0 && key < node->keys[index]) {
+        while (index >= 0 && key <= node->keys[index]) {
+            if(node->keys[index] == key) { //verifica antes se não precisa fazer apenas uma atualização de chaves
+                node->values[index] = value;
+                return;
+            }
             node->keys[index + 1] = node->keys[index];
             node->values[index + 1] = node->values[index];
             index--;
@@ -207,18 +211,22 @@ static void BT_insert_nonfull_2(node_type* node, int order, int key, int value) 
     // CASO 2: Nó é interno
     else {
         // Encontra a posição do filho para descer
-        while (index >= 0 && key < node->keys[index]) {
+        while (index >= 0 && key <= node->keys[index]) {
+            if(node->keys[index] == key) { //verifica antes se não precisa fazer apenas uma atualização de chaves
+                node->values[index] = value;
+                return;
+            }
             index--;
         }
         index++;
 
-        BT_insert_nonfull_2(node->children[index], order, key, value);
+        BT_insert_nonfull(node->children[index], order, key, value);
         if(node->children[index]->size == order) BT_split(node, index, node->children[index], order);
     }
 }
 
-
-static void BT_insert_nonfull(node_type* node, int order, int key, int value) {
+// Implementação não utilizada por quebrar a invariante - foi baseada nos slides da matéria
+static void BT_insert_nonfull2(node_type* node, int order, int key, int value) {
     int index = node->size - 1;
 
     // CASO 1: Nó é folha
@@ -264,7 +272,7 @@ void BT_insert(BT_type * BT, int key, int value) {
 
     node_type* root = BT->root;
 
-    BT_insert_nonfull_2(root, BT->order, key, value);
+    BT_insert_nonfull(root, BT->order, key, value);
     if (root->size == BT->order) {
         // Cria novo nó que será a nova raiz
         node_type* new_root = node_create(BT->order, 0);
