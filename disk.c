@@ -25,8 +25,11 @@ return d;
 
 long disk_write(disk * d, node_type * node, int new) {
 
+    // Os valores indefinidos servem para os preencher espaços do nó que ainda não foram preenchidos pelo cliente
     int nan = UNDEFINED;
     long lnan = UNDEFINED;
+
+    // Os dados do nó são guardados um a um e a ordem é importante para a leitura
     long bp = node_get_bp(node);
     int size = node_get_size(node);
     int leaf = node_get_leaf(node);
@@ -35,6 +38,7 @@ long disk_write(disk * d, node_type * node, int new) {
     int * values = node_get_values(node);
     long * cbps = node_get_children(node);
 
+    // O parâmetro new (quando diferente de 0) indica que o cliente deseja sobrescrever um nó
     if(new) {
         fseek(d -> file, d -> bp, 0);
         fwrite(&d -> bp, sizeof(long), 1, d -> file);
@@ -61,7 +65,10 @@ long disk_write(disk * d, node_type * node, int new) {
         else fwrite(&lnan, sizeof(long), 1, d -> file);
     }
 
+    // Se o cliente não declarou o nó como new, ele apenas está o sobrescrevendo e não quer um novo bp
     if(!new) return bp;
+
+    // Caso contrário, retornamos o bp do momento em que iniciamos a gravação dos dados
     long old_bp = d -> bp;
     d -> bp += d -> node_size;
 

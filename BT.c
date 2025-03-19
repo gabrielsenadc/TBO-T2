@@ -26,7 +26,7 @@ node_type* node_create(int order, int is_leaf) {
     return node;
 }
 
-node_type * node_read(long bp, int size, int leaf, int children_quantity, int * keys, int * values, long * cbp) {
+node_type * node_read(long bp, int size, int leaf, int children_quantity, int * keys, int * values, long * cbps) {
 
     node_type * node = (node_type *) calloc(1, sizeof(node_type));
     node->keys = calloc(size, sizeof(int));

@@ -19,11 +19,22 @@ disk * disk_create(char * name, int order);
  * @param d Disco em que será grava o nó
  * @param node Nó a ser gravado
  * @param new 0 para nova gravação e 1 para alteração de dados em nó já gravado
+ * @return Ponteiro do arquivo binário para o nó gravado
  */
 long disk_write(disk * d, node_type * node, int new);
 
+/**
+ * @brief Lê um nó do disco
+ * @param d Disco a ser lido
+ * @param bp Ponteiro do arquivo binário (localização do nó)
+ * @return Ponteiro para o nó lido - A MEMÓRIA DEVE SER LIBERADA
+ */
 node_type * disk_read(disk * d, long bp);
 
+/**
+ * @brief Libera a memória de um disco
+ * @param d Disco a a ser liberado
+ */
 void disk_free(disk * d);
 
 #endif
