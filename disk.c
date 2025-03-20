@@ -18,7 +18,7 @@ disk * disk_create(char * name, int order) {
     d -> file = fopen(name, "wb+");
     d -> bp = 0;
     d -> order = order;
-    d -> node_size = sizeof(long) + 3 * sizeof(int) + 2 * (order - 1) * sizeof(int) + order * sizeof(long);
+    d -> node_size = sizeof(long) + 2 * sizeof(int) + 2 * (order - 1) * sizeof(int) + order * sizeof(long);
 
 return d;
 }
@@ -33,35 +33,33 @@ long disk_write(disk * d, node_type * node, int new) {
     long bp = node_get_bp(node);
     int size = node_get_size(node);
     int leaf = node_get_leaf(node);
-    int children_quantity = node_get_children_quantity(node);
     int * keys = node_get_keys(node);
     int * values = node_get_values(node);
     long * cbps = node_get_children(node);
 
-    // O parâmetro new (quando diferente de 0) indica que o cliente deseja sobrescrever um nó
-    if(new) {
-        fseek(d -> file, d -> bp, 0);
-        fwrite(&d -> bp, sizeof(long), 1, d -> file);
-    }
-    else {
+    // O parâmetro new (quando igual a 0) indica que o cliente deseja sobrescrever um nó
+    if(!new) {
         fseek(d -> file, bp, 0);
         fwrite(&bp, sizeof(long), 1, d -> file);
+    }
+    else {
+        fseek(d -> file, d -> bp, 0);
+        fwrite(&d -> bp, sizeof(long), 1, d -> file);
     }
     
     fwrite(&size, sizeof(int), 1, d -> file);
     fwrite(&leaf, sizeof(int), 1, d -> file);
-    fwrite(&children_quantity, sizeof(int), 1, d -> file);
 
-    for(int i = 0; i < d -> order; i++) {
+    for(int i = 0; i < d -> order - 1; i++) {
         if(i < size) fwrite(&keys[i], sizeof(int), 1, d -> file);
         else fwrite(&nan, sizeof(int), 1, d -> file);
     }
-    for(int i = 0; i < d -> order; i++) {
+    for(int i = 0; i < d -> order - 1; i++) {
         if(i < size) fwrite(&values[i], sizeof(int), 1, d -> file);
         else fwrite(&nan, sizeof(int), 1, d -> file);
     }
     for(int i = 0; i < d -> order; i++) {
-        if(i < children_quantity) fwrite(&cbps[i], sizeof(long), 1, d -> file);
+        if(i < size + 1) fwrite(&cbps[i], sizeof(long), 1, d -> file);
         else fwrite(&lnan, sizeof(long), 1, d -> file);
     }
 
@@ -80,17 +78,16 @@ node_type * disk_read(disk * d, long bp) {
     int size, leaf, children_quantity, keys[d -> order], values[d -> order];
     long cbps[d -> order];
 
-    fseek(d -> file, d -> bp, 0);
+    fseek(d -> file, bp, 0);
     fread(&bp, sizeof(long), 1, d -> file);
     fread(&size, sizeof(int), 1, d -> file);
     fread(&leaf, sizeof(int), 1, d -> file);
-    fread(&children_quantity, sizeof(int), 1, d -> file);
 
-    for(int i = 0; i < d -> order; i++) fread(&keys[i], sizeof(int), 1, d -> file);
-    for(int i = 0; i < d -> order; i++) fread(&values[i], sizeof(int), 1, d -> file);
+    for(int i = 0; i < d -> order - 1; i++) fread(&keys[i], sizeof(int), 1, d -> file);
+    for(int i = 0; i < d -> order - 1; i++) fread(&values[i], sizeof(int), 1, d -> file);
     for(int i = 0; i < d -> order; i++) fread(&cbps[i], sizeof(long), 1, d -> file);
 
-    return node_read(bp, size, leaf, children_quantity, keys, values, cbps);
+    return node_read(bp, size, leaf, d -> order, keys, values, cbps);
 }
 
 void disk_free(disk * d) {
