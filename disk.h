@@ -18,7 +18,7 @@ disk * disk_create(char * name, int order);
  * @brief Grava um nó no disco
  * @param d Disco em que será grava o nó
  * @param node Nó a ser gravado
- * @param new 0 para nova gravação e 1 para alteração de dados em nó já gravado
+ * @param new Diferente de 0 para nova gravação e 0 para alteração de dados em nó já gravado
  * @return Ponteiro do arquivo binário para o nó gravado
  */
 long disk_write(disk * d, node_type * node, int new);

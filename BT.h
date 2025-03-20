@@ -4,6 +4,9 @@
 #include <stdio.h>
 
 typedef struct node node_type;
+
+#include "disk.h"
+
 typedef struct BT BT_type;
 
 /**
@@ -17,7 +20,7 @@ typedef struct BT BT_type;
  * @param cbps Vetor de inteiros longos contendo os ponteiros binários de cada filho do nó
  * @return Ponteiro para o nó lido - A MEMÓRIA DEVE SER LIBERADA
  */
-node_type * node_read(long bp, int size, int leaf, int children_quantity, int * keys, int * values, long * cbps);
+node_type * node_read(long bp, int size, int leaf, int order, int * keys, int * values, long * cbps);
 
 /**
  * @brief Retorna a quantidade de dados salvas no nó
@@ -54,14 +57,9 @@ int * node_get_keys(node_type * node);
  */
 int * node_get_values(node_type * node);
 
-/**
- * @brief Retorna a quantidade de filhos do nó
- * @param node Nó que se deseja obter o dado
- * @return Quantidade de filhos do nó
- */
-int node_get_children_quantity(node_type * node);
-
 long * node_get_children(node_type * node);
+
+void node_print(node_type * node);
 
 BT_type * BT_create(int order);
 
@@ -71,7 +69,7 @@ void BT_insert(BT_type * BT, int key, int value);
 /// @param root Raiz da árvore
 /// @param key Chave a ser buscada
 /// @return Retorna 1 para caso a chave esteja na árvore e 0 para o caso contrário
-int BT_search(node_type * root, int key);
+int BT_search(BT_type * BT, node_type * root, int key);
 
 void BT_remove(BT_type * BT, int key);
 

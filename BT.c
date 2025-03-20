@@ -6,10 +6,9 @@ struct node {
     long pos_binary_file;     //node position in the binary file   
     int size;     //amount of keys in this node
     int leaf;     //flag if node is a leaf  
-    int children_quantity;  //amount of children
     int * keys;     //array of keys
     int * values;     //array o values, each indexed by a key
-    node_type ** children;     //array of children
+    long * children;     //array of children
 };
 
 node_type* node_create(int order, int is_leaf) {
@@ -17,6 +16,7 @@ node_type* node_create(int order, int is_leaf) {
 
     if (node == NULL) printf("Erro ao criar um nó vazio\n");
 
+    node->pos_binary_file = -1;
     node->leaf = is_leaf;  // Aqui definimos a flag leaf explicitamente
 
     node->keys = calloc(order, sizeof(int));
@@ -26,18 +26,19 @@ node_type* node_create(int order, int is_leaf) {
     return node;
 }
 
-node_type * node_read(long bp, int size, int leaf, int children_quantity, int * keys, int * values, long * cbps) {
+node_type * node_read(long bp, int size, int leaf, int order, int * keys, int * values, long * cbps) {
 
     node_type * node = (node_type *) calloc(1, sizeof(node_type));
-    node->keys = calloc(size, sizeof(int));
-    node->values = calloc(size, sizeof(int));
+    node->keys = calloc(order, sizeof(int));
+    node->values = calloc(order, sizeof(int));
+    node -> children = calloc(order + 1, sizeof(long));
 
     node -> pos_binary_file = bp;
     node -> size = size;
     node -> leaf = leaf;
-    node -> children_quantity = children_quantity;
     for(int i = 0; i < size; i++) node -> keys[i] = keys[i];
     for(int i = 0; i < size; i++) node -> values[i] = values[i];
+    for(int i = 0; i < size + 1; i++) node -> children[i] = cbps[i];
     // Missing children bps
 
 return node; 
@@ -52,8 +53,12 @@ int node_get_leaf(node_type * node) {
     return node -> leaf;
 }
 
-long int node_get_bp(node_type * node) {
+long node_get_bp(node_type * node) {
     return node -> pos_binary_file;
+}
+
+void node_set_bp(node_type * node, long bp) {
+    node -> pos_binary_file = bp;
 }
 
 int * node_get_keys(node_type * node) {
@@ -64,18 +69,13 @@ int * node_get_values(node_type * node) {
     return node -> values;
 }
 
-int node_get_children_quantity(node_type * node) {
-    return node -> children_quantity;
-}
-
 long * node_get_children(node_type * node) {
-    return 0;
+    return node -> children;
 }
 
 void node_free(node_type * node) {
     if (node == NULL) return;
 
-    if (!node->leaf) for (int i = 0; i <= node->size; i++) node_free(node->children[i]);
     free(node->children);
     free(node->keys);
     free(node->values);
@@ -83,7 +83,7 @@ void node_free(node_type * node) {
     free(node);
 }
 
-node_type * node_get_righter(node_type * node){
+/*node_type * node_get_righter(node_type * node){
     if(node->leaf) return node;
     return node_get_righter(node->children[node->size]);
 }
@@ -119,7 +119,7 @@ void node_concat(node_type * dest, node_type * src){
         src->children[i] = NULL;
     }
 
-}
+}*/
 
 void node_print(node_type * node){
     if(node == NULL) return;
@@ -134,6 +134,7 @@ struct BT {
     int order;     //BT order
     node_type * root;     //poiter to the root node
     int size;     //total number of nodes in this BT
+    disk * d;
 };
 
 
@@ -143,6 +144,7 @@ BT_type * BT_create(int order){
     BT->order = order;
     BT->root = NULL;
     BT->size = 0;
+    BT->d = disk_create("shalom.bin", order);
 
     return BT;
 }
@@ -154,7 +156,7 @@ int BT_get_min(BT_type * BT){
 }
 
 
-static void BT_split(node_type* parent, int index, node_type* node, int order) {
+static void BT_split(BT_type * BT, node_type* parent, int index, node_type* node, int order) {
     int mediana_index = (order - 1) / 2;
 
     node_type* sibling = node_create(order, node->leaf);
@@ -184,15 +186,17 @@ static void BT_split(node_type* parent, int index, node_type* node, int order) {
     }
     parent->keys[index] = node->keys[mediana_index];
     parent->values[index] = node->values[mediana_index];
-    parent->children[index] = node;
-    parent->children[index+1] = sibling;
+    parent->children[index] = disk_write(BT->d, node, 0);
+    parent->children[index+1] = disk_write(BT->d, sibling, 1);
 
     // Ajusta o tamanho do nó original e do pai
     parent->size++;
+
+    if(parent != BT->root) disk_write(BT->d, parent, 0);
 }
 
 
-static void BT_insert_nonfull(node_type* node, int order, int key, int value) {
+static void BT_insert_nonfull(BT_type * BT, node_type* node, int order, int key, int value) {
     int index = node->size - 1;
 
     // CASO 1: Nó é folha
@@ -211,6 +215,8 @@ static void BT_insert_nonfull(node_type* node, int order, int key, int value) {
         node->keys[index + 1] = key;
         node->values[index + 1] = value;
         node->size++;
+
+        if(node != BT->root) disk_write(BT->d, node, 0);
     }
     // CASO 2: Nó é interno
     else {
@@ -224,8 +230,9 @@ static void BT_insert_nonfull(node_type* node, int order, int key, int value) {
         }
         index++;
 
-        BT_insert_nonfull(node->children[index], order, key, value);
-        if(node->children[index]->size == order) BT_split(node, index, node->children[index], order);
+        node_type * child = disk_read(BT->d, node->children[index]);
+        BT_insert_nonfull(BT, child, order, key, value);
+        if(child->size == order) BT_split(BT, node, index, child, order);
     }
 }
 
@@ -236,31 +243,36 @@ void BT_insert(BT_type * BT, int key, int value) {
 
     node_type* root = BT->root;
 
-    BT_insert_nonfull(root, BT->order, key, value);
+    BT_insert_nonfull(BT, root, BT->order, key, value);
     if (root->size == BT->order) {
         // Cria novo nó que será a nova raiz
         node_type* new_root = node_create(BT->order, 0);
         BT->root = new_root;
         // O antigo root vira filho[0] da nova raiz
-        new_root->children[0] = root;
-        BT_split(new_root, 0, root, BT->order);
+        
+        new_root->children[0] = disk_write(BT->d, root, 1);
+        node_set_bp(root, new_root->children[0]);
+        BT_split(BT, new_root, 0, root, BT->order);
     }
+
 }
 
 
-int BT_search(node_type * root, int key) {
+int BT_search(BT_type * BT, node_type * root, int key) {
     if(root == NULL) return 0;   //Nó invalido para busca
 
     int index = 0, node_size = node_get_size(root);
     while(index < node_size && key > root->keys[index]) index++;
 
+    node_type * new = disk_read(BT->d, root->children[index]);
+
     if(index < node_size && key == root->keys[index]) return 1;
     else if(root->leaf) return 0;  //Não encontrou a chave
-    else return BT_search(root->children[index], key);    //Continua a busca nos outros nós
+    else return BT_search(BT, new, key);    //Continua a busca nos outros nós
 }
 
 
-node_type * remove_key(BT_type * BT, node_type * node, int key);
+/*node_type * remove_key(BT_type * BT, node_type * node, int key);
 
 node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent){
     if(node->size >= BT_get_min(BT)) return parent;
@@ -419,7 +431,7 @@ node_type * remove_key(BT_type * BT, node_type * node, int key){
 
 void BT_remove(BT_type * BT, int key){
     BT->root = remove_key(BT, BT->root, key);
-}
+}*/
 
 void BT_print(BT_type * BT){
     queue_type * queue = queue_create();
@@ -436,7 +448,7 @@ void BT_print(BT_type * BT){
             node_print(node);
             if(node_get_size(node) > 0 && !node->leaf) {
                 for(int k = 0; k <= node_get_size(node); k++){
-                    node_type * add = node->children[k];
+                    node_type * add = disk_read(BT->d, node->children[k]);
                     enqueue(queue, add);
                 } 
                 qtt_filhos += node_get_size(node) + 1;

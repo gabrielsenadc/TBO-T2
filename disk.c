@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "disk.h"
+#include "colors.h"
 
 #define DEBUG 0
 #define UNDEFINED -1
@@ -39,6 +40,10 @@ long disk_write(disk * d, node_type * node, int new) {
 
     // O parâmetro new (quando igual a 0) indica que o cliente deseja sobrescrever um nó
     if(!new) {
+        if(bp == -1) {
+            printf("%sVocê tentou sobrescrever um nó que nunca foi escrito\n%s", RED, RESET);
+            exit(1);
+        }
         fseek(d -> file, bp, 0);
         fwrite(&bp, sizeof(long), 1, d -> file);
     }
