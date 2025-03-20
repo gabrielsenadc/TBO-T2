@@ -83,28 +83,6 @@ void node_free(node_type * node) {
     free(node);
 }
 
-/*node_type * node_get_righter(node_type * node){
-    if(node->leaf) return node;
-    return node_get_righter(node->children[node->size]);
-}
-
-node_type * node_get_lefter(node_type * node){
-    if(node->leaf) return node;
-    return node_get_lefter(node->children[0]);
-}
-
-node_type * node_get_sibling(int i, node_type * parent, int right){
-    if(parent == NULL) return NULL;
-
-    if(right) i++;
-    else i--;
-
-    if(i > parent->size) return NULL;
-    if(i < 0) return NULL;
-
-    return parent->children[i];
-}
-
 void node_concat(node_type * dest, node_type * src){
     int index = dest->size;
     for(int i = 0; i < src->size; i++){
@@ -115,11 +93,7 @@ void node_concat(node_type * dest, node_type * src){
     dest->size += src->size;
     dest->children[dest->size] = src->children[src->size];
 
-    for(int i = 0; i <= src->size; i++){
-        src->children[i] = NULL;
-    }
-
-}*/
+}
 
 void node_print(node_type * node){
     if(node == NULL) return;
@@ -136,6 +110,33 @@ struct BT {
     int size;     //total number of nodes in this BT
     disk * d;
 };
+
+
+node_type * node_get_righter(BT_type * BT, node_type * node){
+    if(node->leaf) return node;
+
+    node_type * child = disk_read(BT->d, node->children[node->size]);
+    return node_get_righter(BT, child);
+}
+
+node_type * node_get_lefter(BT_type * BT, node_type * node){
+    if(node->leaf) return node;
+
+    node_type * child = disk_read(BT->d, node->children[0]);
+    return node_get_lefter(BT, child);
+}
+
+node_type * node_get_sibling(BT_type * BT, int i, node_type * parent, int right){
+    if(parent == NULL) return NULL;
+
+    if(right) i++;
+    else i--;
+
+    if(i > parent->size) return NULL;
+    if(i < 0) return NULL;
+
+    return disk_read(BT->d, parent->children[i]);
+}
 
 
 BT_type * BT_create(int order){
@@ -284,13 +285,13 @@ int BT_search(BT_type * BT, node_type * root, int key) {
 }
 
 
-/*node_type * remove_key(BT_type * BT, node_type * node, int key);
+long remove_key(BT_type * BT, node_type * node, int key);
 
-node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent){
-    if(node->size >= BT_get_min(BT)) return parent;
+long fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent){
+    if(node->size >= BT_get_min(BT)) return parent->pos_binary_file;
 
-    node_type * left_sibling = node_get_sibling(i_parent, parent, 0);
-    node_type * right_sibling = node_get_sibling(i_parent, parent, 1);
+    node_type * left_sibling = node_get_sibling(BT, i_parent, parent, 0);
+    node_type * right_sibling = node_get_sibling(BT, i_parent, parent, 1);
 
     if(node_get_size(left_sibling) > BT_get_min(BT)){
         i_parent--;
@@ -315,6 +316,8 @@ node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_
 
         left_sibling->size--;
 
+        disk_write(BT->d, left_sibling, 0);
+        disk_write(BT->d, node, 0);
 
     } else if(node_get_size(right_sibling) > BT_get_min(BT)){
 
@@ -339,6 +342,9 @@ node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_
 
         right_sibling->size--;
 
+        disk_write(BT->d, right_sibling, 0);
+        disk_write(BT->d, node, 0);
+
     } else {
         if(right_sibling == NULL) i_parent--;
 
@@ -346,21 +352,25 @@ node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_
 
         if(right_sibling){
             node->size++;
-            node->children[node->size] = NULL;
+            node->children[node->size] = -1;
 
             node->keys[node->size - 1] = parent->keys[i_parent];
             node->values[node->size - 1] = parent->values[i_parent];
             node_concat(node, right_sibling);   
             node_free(right_sibling);
+
+            disk_write(BT->d, node, 0);
         } else {
             left_sibling->size++;
-            left_sibling->children[left_sibling->size] = NULL;
+            left_sibling->children[left_sibling->size] = -1;
 
             left_sibling->keys[left_sibling->size - 1] = parent->keys[i_parent];
             left_sibling->values[left_sibling->size - 1] = parent->values[i_parent];
 
             node_concat(left_sibling, node);   
             node_free(node);
+
+            disk_write(BT->d, left_sibling, 0);
         }
 
         for(int i = 0; i < parent->size; i++){
@@ -374,17 +384,17 @@ node_type * fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_
         parent->size--;
 
         if(parent->size == 0 && BT->root == parent) {
-            node_type * child = parent->children[0];
-            for(int i = 0; i < BT->order; i++) parent->children[i] = NULL;
+            node_type * child = disk_read(BT->d, parent->children[0]);
             node_free(parent);
-            return child;
+            return child->pos_binary_file;
         }
     }
 
-    return parent;
+    if(parent != BT->root) disk_write(BT->d, parent, 0);
+    return parent->pos_binary_file;
 }
 
-node_type *  remove_key_caso1(BT_type * BT, node_type * node, int key){
+void remove_key_caso1(BT_type * BT, node_type * node, int key){
     for(int i = 0; i < node->size; i++){
         if(node->keys[i] > key){
             node->keys[i - 1] = node->keys[i];
@@ -394,56 +404,63 @@ node_type *  remove_key_caso1(BT_type * BT, node_type * node, int key){
 
     node->size--;
 
-    return node;
+    if(node != BT->root) disk_write(BT->d, node, 0);
 }
 
-node_type * remove_key_caso2(BT_type * BT, node_type * node, int key){
+long remove_key_caso2(BT_type * BT, node_type * node, int key){
     int i = 0;
     for(; i < node->size; i++) if(key == node->keys[i]) break;
 
-    if(node_get_size(node->children[i + 1]) <= BT_get_min(BT)){
-        node_type * righter = node_get_righter(node->children[i]);
+    node_type * r_child = disk_read(BT->d, node->children[i + 1]);
+    node_type * l_child = disk_read(BT->d, node->children[i]);
+
+    if(node_get_size(r_child) <= BT_get_min(BT)){
+        node_type * righter = node_get_righter(BT, l_child);
         int j = node_get_size(righter) - 1;
 
         node->keys[i] = righter->keys[j];
         node->values[i] = righter->values[j];
 
-        node->children[i] = remove_key(BT, node->children[i], righter->keys[j]);
-        return fix_caso3(BT, node, node->children[i], i);
+        remove_key(BT, l_child, righter->keys[j]);
+        return fix_caso3(BT, node, l_child, i);
 
     } else {
-        node_type * lefter = node_get_lefter(node->children[i + 1]);
+        node_type * lefter = node_get_lefter(BT, r_child);
         int j = 0;
 
         node->keys[i] = lefter->keys[j];
         node->values[i] = lefter->values[j];
 
-        node->children[i + 1] = remove_key(BT, node->children[i + 1], lefter->keys[j]);
-        return fix_caso3(BT, node, node->children[i + 1], i + 1);
+        remove_key(BT, r_child, lefter->keys[j]);
+        return fix_caso3(BT, node, r_child, i + 1);
     }
 
 }
 
-node_type * remove_key(BT_type * BT, node_type * node, int key){
+long remove_key(BT_type * BT, node_type * node, int key){
     int i = 0;
     for(; i < node->size; i++) if(key <= node->keys[i]) break;
 
     if(i < node->size && key == node->keys[i]){
-        if(node->leaf) node = remove_key_caso1(BT, node, key);
-        else node = remove_key_caso2(BT, node, key);
+        if(node->leaf) remove_key_caso1(BT, node, key);
+        else node->pos_binary_file = remove_key_caso2(BT, node, key);
 
-        return node;
+        return node->pos_binary_file;
     }
 
-    if(node->leaf) printf("NAO EXISTE");
-    else node->children[i] = remove_key(BT, node->children[i], key);
+    node_type * child = disk_read(BT->d, node->children[i]);
 
-    return fix_caso3(BT, node, node->children[i], i);
+    if(node->leaf) printf("NAO EXISTE");
+    else node->children[i] = remove_key(BT, child, key);
+
+    return fix_caso3(BT, node, child, i);
 }
 
 void BT_remove(BT_type * BT, int key){
-    BT->root = remove_key(BT, BT->root, key);
-}*/
+    long bp = remove_key(BT, BT->root, key);
+
+    if(bp != -1) BT->root = disk_read(BT->d, bp);
+}
 
 void BT_print(BT_type * BT){
     queue_type * queue = queue_create();
