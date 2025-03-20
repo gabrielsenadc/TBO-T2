@@ -193,6 +193,8 @@ static void BT_split(BT_type * BT, node_type* parent, int index, node_type* node
     parent->size++;
 
     if(parent != BT->root) disk_write(BT->d, parent, 0);
+
+    node_free(sibling);
 }
 
 
@@ -233,6 +235,8 @@ static void BT_insert_nonfull(BT_type * BT, node_type* node, int order, int key,
         node_type * child = disk_read(BT->d, node->children[index]);
         BT_insert_nonfull(BT, child, order, key, value);
         if(child->size == order) BT_split(BT, node, index, child, order);
+
+        node_free(child);
     }
 }
 
@@ -253,6 +257,8 @@ void BT_insert(BT_type * BT, int key, int value) {
         new_root->children[0] = disk_write(BT->d, root, 1);
         node_set_bp(root, new_root->children[0]);
         BT_split(BT, new_root, 0, root, BT->order);
+
+        node_free(root);
     }
 
 }
@@ -261,14 +267,20 @@ void BT_insert(BT_type * BT, int key, int value) {
 int BT_search(BT_type * BT, node_type * root, int key) {
     if(root == NULL) return 0;   //Nó invalido para busca
 
+    int value;
+
     int index = 0, node_size = node_get_size(root);
     while(index < node_size && key > root->keys[index]) index++;
 
     node_type * new = disk_read(BT->d, root->children[index]);
 
-    if(index < node_size && key == root->keys[index]) return 1;
-    else if(root->leaf) return 0;  //Não encontrou a chave
-    else return BT_search(BT, new, key);    //Continua a busca nos outros nós
+    if(index < node_size && key == root->keys[index]) value = 1;
+    else if(root->leaf) value = 0;  //Não encontrou a chave
+    else value = BT_search(BT, new, key);    //Continua a busca nos outros nós
+
+    node_free(new);
+
+    return value;
 }
 
 
@@ -454,6 +466,7 @@ void BT_print(BT_type * BT){
                 qtt_filhos += node_get_size(node) + 1;
             }
             if(j != i - 1) printf(" ");
+            if(node != BT->root) node_free(node);
         }
         i = qtt_filhos;
         printf("\n");
@@ -464,6 +477,7 @@ void BT_print(BT_type * BT){
 
 void BT_free(BT_type * BT){
     node_free(BT->root);
+    disk_free(BT->d);
     free(BT);
 }
 

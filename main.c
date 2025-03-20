@@ -39,12 +39,12 @@ int main(int argc, char ** argv) {
         
         case 'R':
             fscanf(file, "%d\n", &key);
-            BT_remove(bt, key);
+            //BT_remove(bt, key);
             break;
 
         case 'B':
             fscanf(file, "%d\n", &key);
-            if(BT_search(BT_get_root(bt), key)) printf("O REGISTRO ESTA NA ARVORE!\n");
+            if(BT_search(bt, BT_get_root(bt), key)) printf("O REGISTRO ESTA NA ARVORE!\n");
             else printf("O REGISTRO NAO ESTA NA ARVORE!\n");
             break;
 

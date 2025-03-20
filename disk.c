@@ -80,7 +80,7 @@ return old_bp;
 
 node_type * disk_read(disk * d, long bp) {
 
-    int size, leaf, children_quantity, keys[d -> order], values[d -> order];
+    int size, leaf, keys[d -> order], values[d -> order];
     long cbps[d -> order];
 
     fseek(d -> file, bp, 0);
