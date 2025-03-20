@@ -68,6 +68,10 @@ int node_get_children_quantity(node_type * node) {
     return node -> children_quantity;
 }
 
+long * node_get_children(node_type * node) {
+    return 0;
+}
+
 void node_free(node_type * node) {
     if (node == NULL) return;
 
@@ -224,46 +228,6 @@ static void BT_insert_nonfull(node_type* node, int order, int key, int value) {
         if(node->children[index]->size == order) BT_split(node, index, node->children[index], order);
     }
 }
-
-// Implementação não utilizada por quebrar a invariante - foi baseada nos slides da matéria
-static void BT_insert_nonfull2(node_type* node, int order, int key, int value) {
-    int index = node->size - 1;
-
-    // CASO 1: Nó é folha
-    if (node->leaf) {
-        // Desloca chaves e valores maiores para a direita
-        while (index >= 0 && key < node->keys[index]) {
-            node->keys[index + 1] = node->keys[index];
-            node->values[index + 1] = node->values[index];
-            index--;
-        }
-        // Insere a nova chave e valor
-        node->keys[index + 1] = key;
-        node->values[index + 1] = value;
-        node->size++;
-    }
-    // CASO 2: Nó é interno
-    else {
-        // Encontra a posição do filho para descer
-        while (index >= 0 && key < node->keys[index]) {
-            index--;
-        }
-        index++;
-
-        // Split caso filho esteja cheio
-        if (node->children[index] && node->children[index]->size == order - 1) {
-            BT_split(node, index, node->children[index], order);
-
-            // Se a nova chave for maior que a chave promovida, vamos para o próximo filho
-            if (key > node->keys[index]) {
-                index++;
-            }
-        }
-        // Desce recursivamente
-        BT_insert_nonfull(node->children[index], order, key, value);
-    }
-}
-
 
 void BT_insert(BT_type * BT, int key, int value) {
     if (BT == NULL) return;   // Árvore inválida para inserção

@@ -61,6 +61,8 @@ int * node_get_values(node_type * node);
  */
 int node_get_children_quantity(node_type * node);
 
+long * node_get_children(node_type * node);
+
 BT_type * BT_create(int order);
 
 void BT_insert(BT_type * BT, int key, int value);
