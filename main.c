@@ -5,7 +5,7 @@
 
 int main(int argc, char ** argv) {
 
-    if(argc <= 1) {
+    if(argc <= 2) {
         printf("%sO diretório do arquivo não foi informado.\n%s", RED, RESET);
         exit(1);
     }
@@ -13,6 +13,13 @@ int main(int argc, char ** argv) {
     FILE * file = fopen(argv[1], "r");
     
     if(file == NULL) {
+        printf("%sO arquivo informado não existe.\n%s", RED, RESET);
+        exit(1);
+    }
+
+    FILE * output = fopen(argv[2], "w");
+    
+    if(output == NULL) {
         printf("%sO arquivo informado não existe.\n%s", RED, RESET);
         exit(1);
     }
@@ -44,8 +51,8 @@ int main(int argc, char ** argv) {
 
         case 'B':
             fscanf(file, "%d\n", &key);
-            if(BT_search(bt, BT_get_root(bt), key)) printf("O REGISTRO ESTA NA ARVORE!\n");
-            else printf("O REGISTRO NAO ESTA NA ARVORE!\n");
+            if(BT_search(bt, BT_get_root(bt), key)) fprintf(output, "O REGISTRO ESTA NA ARVORE!\n");
+            else fprintf(output, "O REGISTRO NAO ESTA NA ARVORE!\n");
             break;
 
         default:
@@ -56,9 +63,10 @@ int main(int argc, char ** argv) {
         }
     }
 
-    BT_print(bt);
+    BT_print(bt, output);
     BT_free(bt);
     fclose(file);
+    fclose(output);
 
     return 0;
 }
