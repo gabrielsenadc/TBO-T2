@@ -466,6 +466,8 @@ long remove_key_caso2(BT_type * BT, node_type * node, int key){
         node_free(l_child);
     }
 
+    if(node != BT->root) disk_write(BT->d, node, 0);
+
     return bp;
 
 }
