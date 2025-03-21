@@ -297,7 +297,10 @@ long remove_key(BT_type * BT, node_type * node, int key);
 
 long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
     node_type * node = disk_read(BT->d, parent->children[i_parent]);
-    if(node->size >= BT_get_min(BT)) return parent->pos_binary_file;
+    if(node->size >= BT_get_min(BT)){
+        node_free(node);
+        return parent->pos_binary_file;
+    } 
 
     node_type * left_sibling = node_get_sibling(BT, i_parent, parent, 0);
     node_type * right_sibling = node_get_sibling(BT, i_parent, parent, 1);
@@ -394,6 +397,7 @@ long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
             node_type * child = disk_read(BT->d, parent->children[0]);
             int bp = child->pos_binary_file;
             node_free(child);
+            node_free(node);
             node_free(parent);
             node_free(left_sibling);
             node_free(right_sibling);
