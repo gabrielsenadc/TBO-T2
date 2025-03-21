@@ -64,6 +64,7 @@ int main(int argc, char ** argv) {
     }
 
     fprintf(output, "\n");
+    
     BT_print(bt, output);
     BT_free(bt);
     fclose(file);
