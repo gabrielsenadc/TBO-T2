@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include "disk.h"
 #include "colors.h"
 
@@ -7,6 +8,7 @@
 #define UNDEFINED -1
 
 struct disk {
+    char * file_name;
     FILE * file;
     long bp;    // Binary pointer
     int order;
@@ -16,6 +18,7 @@ struct disk {
 disk * disk_create(char * name, int order) {
 
     disk * d = (disk *) calloc(1, sizeof(disk));
+    d -> file_name = strdup(name);
     d -> file = fopen(name, "wb+");
     d -> bp = 0;
     d -> order = order;
@@ -97,6 +100,8 @@ node_type * disk_read(disk * d, long bp) {
 
 void disk_free(disk * d) {
 
+    remove(d -> file_name);
+    free(d -> file_name);
     fclose(d -> file);
     free(d);
 
