@@ -295,7 +295,8 @@ int BT_search(BT_type * BT, node_type * root, int key) {
 
 long remove_key(BT_type * BT, node_type * node, int key);
 
-long fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent){
+long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
+    node_type * node = disk_read(BT->d, parent->children[i_parent]);
     if(node->size >= BT_get_min(BT)) return parent->pos_binary_file;
 
     node_type * left_sibling = node_get_sibling(BT, i_parent, parent, 0);
@@ -400,6 +401,7 @@ long fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent)
         }
     }
 
+    node_free(node);
     node_free(left_sibling);
     node_free(right_sibling);
 
@@ -407,7 +409,7 @@ long fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent)
     return parent->pos_binary_file;
 }
 
-void remove_key_caso1(BT_type * BT, node_type * node, int key){
+long remove_key_caso1(BT_type * BT, node_type * node, int key){
     for(int i = 0; i < node->size; i++){
         if(node->keys[i] > key){
             node->keys[i - 1] = node->keys[i];
@@ -418,6 +420,8 @@ void remove_key_caso1(BT_type * BT, node_type * node, int key){
     node->size--;
 
     if(node != BT->root) disk_write(BT->d, node, 0);
+
+    return node->pos_binary_file;
 }
 
 long remove_key_caso2(BT_type * BT, node_type * node, int key){
@@ -437,7 +441,7 @@ long remove_key_caso2(BT_type * BT, node_type * node, int key){
         node->values[i] = righter->values[j];
 
         remove_key(BT, l_child, righter->keys[j]);
-        bp = fix_caso3(BT, node, l_child, i);
+        bp = fix_caso3(BT, node, i);
 
         if(righter != l_child) node_free(l_child);
         node_free(righter);
@@ -451,7 +455,7 @@ long remove_key_caso2(BT_type * BT, node_type * node, int key){
         node->values[i] = lefter->values[j];
 
         remove_key(BT, r_child, lefter->keys[j]);
-        bp = fix_caso3(BT, node, r_child, i + 1);
+        bp = fix_caso3(BT, node, i + 1);
 
         if(lefter != r_child) node_free(r_child);
         node_free(lefter);
@@ -467,10 +471,10 @@ long remove_key(BT_type * BT, node_type * node, int key){
     for(; i < node->size; i++) if(key <= node->keys[i]) break;
 
     if(i < node->size && key == node->keys[i]){
-        if(node->leaf) remove_key_caso1(BT, node, key);
-        else node->pos_binary_file = remove_key_caso2(BT, node, key);
+        if(node->leaf) bp = remove_key_caso1(BT, node, key);
+        else bp = remove_key_caso2(BT, node, key);
 
-        return node->pos_binary_file;
+        return bp;
     }
 
     node_type * child = disk_read(BT->d, node->children[i]);
@@ -478,7 +482,7 @@ long remove_key(BT_type * BT, node_type * node, int key){
     if(node->leaf) bp = node->pos_binary_file;
     else node->children[i] = remove_key(BT, child, key);
 
-    bp = fix_caso3(BT, node, child, i);
+    bp = fix_caso3(BT, node, i);
 
     node_free(child);
     
