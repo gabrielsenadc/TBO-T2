@@ -365,7 +365,6 @@ long fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent)
             node->keys[node->size - 1] = parent->keys[i_parent];
             node->values[node->size - 1] = parent->values[i_parent];
             node_concat(node, right_sibling);   
-            //node_free(right_sibling);
 
             disk_write(BT->d, node, 0);
         } else {
@@ -375,8 +374,7 @@ long fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent)
             left_sibling->keys[left_sibling->size - 1] = parent->keys[i_parent];
             left_sibling->values[left_sibling->size - 1] = parent->values[i_parent];
 
-            node_concat(left_sibling, node);   
-            //node_free(node);
+            node_concat(left_sibling, node); 
 
             disk_write(BT->d, left_sibling, 0);
         }
@@ -393,10 +391,12 @@ long fix_caso3(BT_type * BT, node_type * parent, node_type * node, int i_parent)
 
         if(parent->size == 0 && BT->root == parent) {
             node_type * child = disk_read(BT->d, parent->children[0]);
+            int bp = child->pos_binary_file;
+            node_free(child);
             node_free(parent);
             node_free(left_sibling);
             node_free(right_sibling);
-            return child->pos_binary_file;
+            return bp;
         }
     }
 
@@ -463,7 +463,7 @@ long remove_key_caso2(BT_type * BT, node_type * node, int key){
 }
 
 long remove_key(BT_type * BT, node_type * node, int key){
-    int i = 0;
+    int i = 0, bp;
     for(; i < node->size; i++) if(key <= node->keys[i]) break;
 
     if(i < node->size && key == node->keys[i]){
@@ -475,10 +475,10 @@ long remove_key(BT_type * BT, node_type * node, int key){
 
     node_type * child = disk_read(BT->d, node->children[i]);
 
-    if(node->leaf) printf("NAO EXISTE");
+    if(node->leaf) bp = node->pos_binary_file;
     else node->children[i] = remove_key(BT, child, key);
 
-    int bp = fix_caso3(BT, node, child, i);
+    bp = fix_caso3(BT, node, child, i);
 
     node_free(child);
     
@@ -488,7 +488,10 @@ long remove_key(BT_type * BT, node_type * node, int key){
 void BT_remove(BT_type * BT, int key){
     long bp = remove_key(BT, BT->root, key);
 
-    if(bp != -1) BT->root = disk_read(BT->d, bp);
+    if(bp != -1){
+        BT->root = disk_read(BT->d, bp);
+        node_set_bp(BT->root, -1);
+    }
 }
 
 void BT_print(BT_type * BT){
