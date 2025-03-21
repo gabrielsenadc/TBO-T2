@@ -57,12 +57,26 @@ int * node_get_keys(node_type * node);
  */
 int * node_get_values(node_type * node);
 
+/**
+ * @brief Retorna os ponteiros dos filhos do nó
+ * @param node Nó que se deseja obter o dado
+ * @return Ponteiros dos filhos do nó
+ */
 long * node_get_children(node_type * node);
 
-void node_print(node_type * node);
-
+/**
+ * @brief Cria uma ávore B de uma determinada ordem
+ * @param order ordem da árvore a ser criada
+ * @return Ponteiro para a árvore criada
+ */
 BT_type * BT_create(int order);
 
+/**
+ * @brief Insere um par chave - valor em uma árvore B
+ * @param BT árvore B onde será inserido a chave - valor
+ * @param key chave a ser inserida
+ * @param value valor a ser inserido, associado à chave
+ */
 void BT_insert(BT_type * BT, int key, int value);
 
 /// @brief Função de busca na árvore
@@ -71,12 +85,32 @@ void BT_insert(BT_type * BT, int key, int value);
 /// @return Retorna 1 para caso a chave esteja na árvore e 0 para o caso contrário
 int BT_search(BT_type * BT, node_type * root, int key);
 
+/**
+ * @brief Retorna uma determinada chave de uma árvore B, 
+ * se a chave passada não pertencer à árvore, nada muda
+ * @param BT árvore B onde ocorrerá a remoção
+ * @param key chave a ser removida
+ */
 void BT_remove(BT_type * BT, int key);
 
-void BT_print(BT_type * BT);
+/**
+ * @brief Imprime uma determinada árvore B em largura
+ * @param BT árvore B que deve ser imprimida
+ * @param output arquivo de impressão
+ */
+void BT_print(BT_type * BT, FILE * output);
 
+/**
+ * @brief Desaloca devidamente uma árvore B da memória
+ * @param BT árvore B que deve ser liberada
+ */
 void BT_free(BT_type * BT);
 
+/**
+ * @brief Retorna a raiz de uma árvore B
+ * @param BT árvore B que se deseja obter o dado
+ * @return node que representa a raiz
+ */
 node_type * BT_get_root(BT_type * BT);
 
 #endif

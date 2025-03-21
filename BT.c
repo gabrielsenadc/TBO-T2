@@ -95,13 +95,13 @@ void node_concat(node_type * dest, node_type * src){
 
 }
 
-void node_print(node_type * node){
+void node_print(node_type * node, FILE * file){
     if(node == NULL) return;
-    printf("[");
+    fprintf(file, "[");
 
-    for(int i = 0; i < node_get_size(node); i++) printf("key: %d, ", node->keys[i]);
+    for(int i = 0; i < node_get_size(node); i++) fprintf(file, "key: %d, ", node->keys[i]);
 
-    printf("]");
+    fprintf(file, "]");
 }
 
 struct BT {
@@ -134,6 +134,7 @@ node_type * node_get_lefter(BT_type * BT, node_type * node){
     return node_returned;
 }
 
+// se right for diferente de 0, pega o irmão da direita, caso contrário pega o irmão da esquerda
 node_type * node_get_sibling(BT_type * BT, int i, node_type * parent, int right){
     if(parent == NULL) return NULL;
 
@@ -297,7 +298,7 @@ long remove_key(BT_type * BT, node_type * node, int key);
 
 long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
     node_type * node = disk_read(BT->d, parent->children[i_parent]);
-    if(node->size >= BT_get_min(BT)){
+    if(node->size >= BT_get_min(BT)){ // retorna normalmente caso o nó filho possua o minímo ou mais
         node_free(node);
         return parent->pos_binary_file;
     } 
@@ -305,9 +306,10 @@ long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
     node_type * left_sibling = node_get_sibling(BT, i_parent, parent, 0);
     node_type * right_sibling = node_get_sibling(BT, i_parent, parent, 1);
 
-    if(node_get_size(left_sibling) > BT_get_min(BT)){
+    if(node_get_size(left_sibling) > BT_get_min(BT)){ // se o irmão da esquerda tiver mais chaves que o mínimo, vamos usá-lo para o caso 3A
         i_parent--;
 
+        // node aumenta de tamanho e agora cumpre o mínimo de chaves e é ajeitado para receber uma nova chave
         node->size++;
         node->children[node->size] = node->children[node->size - 1];
         for(int i = node->size - 1; i > 0; i--){
@@ -326,13 +328,14 @@ long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
         
         node->children[0] = left_sibling->children[left_sibling->size];
 
+        // acerta tamanho do irmão após ele doar uma chave
         left_sibling->size--;
 
         disk_write(BT->d, left_sibling, 0);
         disk_write(BT->d, node, 0);
 
-    } else if(node_get_size(right_sibling) > BT_get_min(BT)){
-
+    } else if(node_get_size(right_sibling) > BT_get_min(BT)){ // se o irmão da direita tiver mais chaves que o mínimo, vamos usá-lo para o caso 3A
+        // node aumenta de tamanho e agora cumpre o mínimo de chaves
         node->size++;
 
         int i_sibling = 0;
@@ -345,6 +348,7 @@ long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
 
         node->children[node->size] = right_sibling->children[0];
 
+        // ajeita o irmão da direita após tal doar uma chave
         for(int i = 0; i < right_sibling->size - 1; i++){
             right_sibling->keys[i] = right_sibling->keys[i + 1];
             right_sibling->values[i] = right_sibling->values[i + 1];
@@ -357,24 +361,27 @@ long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
         disk_write(BT->d, right_sibling, 0);
         disk_write(BT->d, node, 0);
 
-    } else {
+    } else { //caso ambos os irmãos tenham apenas o mínimo de chaves, vamos fazer o caso 3B
         if(right_sibling == NULL) i_parent--;
 
         int key_parent = parent->keys[i_parent];
 
-        if(right_sibling){
+        if(right_sibling){ // se o irmão da direita existir, concatena o nó com esse irmão
             node->size++;
             node->children[node->size] = -1;
 
+            // node recebe uma chave do pai
             node->keys[node->size - 1] = parent->keys[i_parent];
             node->values[node->size - 1] = parent->values[i_parent];
+
             node_concat(node, right_sibling);   
 
             disk_write(BT->d, node, 0);
-        } else {
+        } else { // concatena o irmão da esquerda com o nó
             left_sibling->size++;
             left_sibling->children[left_sibling->size] = -1;
 
+            // irmão recebe uma chave do pai
             left_sibling->keys[left_sibling->size - 1] = parent->keys[i_parent];
             left_sibling->values[left_sibling->size - 1] = parent->values[i_parent];
 
@@ -383,6 +390,7 @@ long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
             disk_write(BT->d, left_sibling, 0);
         }
 
+        // reajuste no pai, uma vez que ele diminuiu de tamanho
         for(int i = 0; i < parent->size; i++){
             if(parent->keys[i] > key_parent){
                 parent->keys[i - 1] = parent->keys[i];
@@ -393,9 +401,9 @@ long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
 
         parent->size--;
 
-        if(parent->size == 0 && BT->root == parent) {
+        if(parent->size == 0 && BT->root == parent) { // se o tamanho do pai for igual a 0 e ele for a raiz da árvore
             node_type * child = disk_read(BT->d, parent->children[0]);
-            int bp = child->pos_binary_file;
+            int bp = child->pos_binary_file; // o bp a ser retornado sera de seu único filho que acabou de ser concatenado, tornando-se assim a nova raiz
             node_free(child);
             node_free(node);
             node_free(parent);
@@ -414,6 +422,7 @@ long fix_caso3(BT_type * BT, node_type * parent, int i_parent){
 }
 
 long remove_key_caso1(BT_type * BT, node_type * node, int key){
+    // desloca todas as chaves, maiores do que a removida, para esquerda 
     for(int i = 0; i < node->size; i++){
         if(node->keys[i] > key){
             node->keys[i - 1] = node->keys[i];
@@ -432,34 +441,36 @@ long remove_key_caso2(BT_type * BT, node_type * node, int key){
     int i = 0;
     for(; i < node->size; i++) if(key == node->keys[i]) break;
 
-    node_type * r_child = disk_read(BT->d, node->children[i + 1]);
-    node_type * l_child = disk_read(BT->d, node->children[i]);
+    node_type * r_child = disk_read(BT->d, node->children[i + 1]); // filho à direita de uma chave
+    node_type * l_child = disk_read(BT->d, node->children[i]); // filho à esquerda da chave
 
     int bp;
 
-    if(node_get_size(r_child) <= BT_get_min(BT)){
-        node_type * righter = node_get_righter(BT, l_child);
+    if(node_get_size(r_child) <= BT_get_min(BT)){ // se o filho à direita possuir apenas o mínimo de nós
+        node_type * righter = node_get_righter(BT, l_child); // pega o filho mais a direita em relação ao l_child
         int j = node_get_size(righter) - 1;
 
+        // substitui os valores do nó atual pela chave antecessor
         node->keys[i] = righter->keys[j];
         node->values[i] = righter->values[j];
 
-        remove_key(BT, l_child, righter->keys[j]);
-        bp = fix_caso3(BT, node, i);
+        remove_key(BT, l_child, righter->keys[j]); // remove a chave substituída do righter
+        bp = fix_caso3(BT, node, i); // caso 3 é chamado para corrigir nós que possuem menos chaves que o minímo
 
         if(righter != l_child) node_free(l_child);
         node_free(righter);
         node_free(r_child);
 
-    } else {
-        node_type * lefter = node_get_lefter(BT, r_child);
+    } else { // se o filho à direita possuir apenas o mínimo de nós
+        node_type * lefter = node_get_lefter(BT, r_child); // pega o filho mais a esquerda em relação ao r_child
         int j = 0;
 
+        // substitui os valores do nó atual pela chave sucessor
         node->keys[i] = lefter->keys[j];
         node->values[i] = lefter->values[j];
 
-        remove_key(BT, r_child, lefter->keys[j]);
-        bp = fix_caso3(BT, node, i + 1);
+        remove_key(BT, r_child, lefter->keys[j]); // remove a chave substituída do lefter
+        bp = fix_caso3(BT, node, i + 1); // caso 3 é chamado para corrigir nós que possuem menos chaves que o minímo
 
         if(lefter != r_child) node_free(r_child);
         node_free(lefter);
@@ -477,18 +488,18 @@ long remove_key(BT_type * BT, node_type * node, int key){
     for(; i < node->size; i++) if(key <= node->keys[i]) break;
 
     if(i < node->size && key == node->keys[i]){
-        if(node->leaf) bp = remove_key_caso1(BT, node, key);
-        else bp = remove_key_caso2(BT, node, key);
+        if(node->leaf) bp = remove_key_caso1(BT, node, key); // se a chave está no nó e ele é uma folha (caso 1)
+        else bp = remove_key_caso2(BT, node, key); // se a chave está no nó e ele não é uma folha (caso 2)
 
         return bp;
     }
 
     node_type * child = disk_read(BT->d, node->children[i]);
 
-    if(node->leaf) bp = node->pos_binary_file;
-    else node->children[i] = remove_key(BT, child, key);
+    if(node->leaf) bp = node->pos_binary_file; // chave não está na árvore
+    else node->children[i] = remove_key(BT, child, key); // chama recursivamente a função para o devido filho
 
-    bp = fix_caso3(BT, node, i);
+    bp = fix_caso3(BT, node, i); // caso 3 é chamado para corrigir nós que possuem menos chaves que o minímo
 
     node_free(child);
     
@@ -498,16 +509,16 @@ long remove_key(BT_type * BT, node_type * node, int key){
 void BT_remove(BT_type * BT, int key){
     long bp = remove_key(BT, BT->root, key);
 
-    if(bp != -1){
+    if(bp != -1){ // se bp for diferente de -1, significa que uma nova raiz foi criada
         BT->root = disk_read(BT->d, bp);
-        node_set_bp(BT->root, -1);
+        node_set_bp(BT->root, -1); // seta bp da raiz como -1, uma vez que essa não se encontra no arquivo binário
     }
 }
 
-void BT_print(BT_type * BT){
+void BT_print(BT_type * BT, FILE * output){
     queue_type * queue = queue_create();
 
-    printf("--- ARVORE B\n");
+    fprintf(output, "-- ARVORE B\n");
     enqueue(queue, BT->root);
     int i = 1;
 
@@ -516,7 +527,7 @@ void BT_print(BT_type * BT){
         int qtt_filhos = 0;
         for(int j = 0; j < i; j++){
             node = dequeue(queue);
-            node_print(node);
+            node_print(node, output);
             if(node_get_size(node) > 0 && !node->leaf) {
                 for(int k = 0; k <= node_get_size(node); k++){
                     node_type * add = disk_read(BT->d, node->children[k]);
@@ -524,11 +535,11 @@ void BT_print(BT_type * BT){
                 } 
                 qtt_filhos += node_get_size(node) + 1;
             }
-            if(j != i - 1) printf(" ");
+            if(j != i - 1) fprintf(output, " ");
             if(node != BT->root) node_free(node);
         }
         i = qtt_filhos;
-        printf("\n");
+        fprintf(output, "\n");
     }
 
     queue_free(queue);
