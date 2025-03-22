@@ -17,6 +17,12 @@ struct node {
     long * children;     //array of children
 };
 
+/**
+ * @brief Cria um novo nó. Note que os tamanhos dos arrays são incrementados para aguentarem temporariamente mais 1 par chave-valor. 
+ * @param order Ordem da árvore B para definição de tamanho dos arrays.
+ * @param is_leaf Flag que inicializa o nó como folha ou não.
+ * @return O novo nó criado.
+ */
 node_type* node_create(int order, int is_leaf) {
     node_type* node = calloc(1, sizeof(node_type));
 
@@ -171,8 +177,16 @@ int BT_get_min(BT_type * BT){
     return (order / 2) - 1;
 }
 
-
-static void BT_split(BT_type * BT, node_type* parent, int index, node_type* node, int order) {
+/**
+ * @brief Divide um nó "super-cheio" (número de chaves = ondem da árvore) e promove a mediana para o pai
+ * @param BT Árvore B
+ * @param parent pai do nó a ser dividido. Receberá a mediana
+ * @param index posição em que a mediana subirá no nó pai
+ * @param node nó "super-cheio"
+ * @param parent pai do nó a ser dividido. Receberá a mediana
+ */
+static void BT_split(BT_type * BT, node_type* parent, int index, node_type* node) {
+    int order = BT->order;
     int mediana_index = (order - 1) / 2;
 
     node_type* sibling = node_create(order, node->leaf);
@@ -213,8 +227,20 @@ static void BT_split(BT_type * BT, node_type* parent, int index, node_type* node
     node_free(sibling);
 }
 
-
-static void BT_insert_nonfull(BT_type * BT, node_type* node, int order, int key, int value) {
+/**
+ * @brief Insere um par chave-valor em um nó não cheio na árvore B
+ * 
+ * A função lida com dois casos principais:
+ * - Se o nó é uma folha, ela desloca as chaves e valores maiores para a direita e insere a nova chave e valor.
+ * - Se o nó é interno, a função localiza o filho adequado onde a chave deve ser inserida, e recursivamente chama a função de inserção no nó filho. Caso o filho esteja cheio ("super nó") após a inserção, ele é dividido.
+ * 
+ * @param BT Ponteiro para a estrutura da árvore B
+ * @param node Nó onde o par chave-valor deve ser inserido
+ * @param key A chave a ser inserida
+ * @param value O valor associado à chave a ser inserida
+ */
+static void BT_insert_nonfull(BT_type * BT, node_type* node, int key, int value) {
+    int order = BT->order;
     int index = node->size - 1;
 
     // CASO 1: Nó é folha
@@ -249,8 +275,8 @@ static void BT_insert_nonfull(BT_type * BT, node_type* node, int order, int key,
         index++;
 
         node_type * child = disk_read(BT->d, node->children[index]);
-        BT_insert_nonfull(BT, child, order, key, value);
-        if(child->size == order) BT_split(BT, node, index, child, order);
+        BT_insert_nonfull(BT, child, key, value);
+        if(child->size == order) BT_split(BT, node, index, child);
 
         node_free(child);
     }
@@ -263,7 +289,7 @@ void BT_insert(BT_type * BT, int key, int value) {
 
     node_type* root = BT->root;
 
-    BT_insert_nonfull(BT, root, BT->order, key, value);
+    BT_insert_nonfull(BT, root, key, value);
     if (root->size == BT->order) {
         // Cria novo nó que será a nova raiz
         node_type* new_root = node_create(BT->order, 0);
@@ -272,7 +298,7 @@ void BT_insert(BT_type * BT, int key, int value) {
         
         new_root->children[0] = disk_write(BT->d, root, 1);
         node_set_bp(root, new_root->children[0]);
-        BT_split(BT, new_root, 0, root, BT->order);
+        BT_split(BT, new_root, 0, root);
 
         node_free(root);
     }
